@@ -1,5 +1,5 @@
 campaign_id: pi05-libero-semantic-discovery-v1
-status: locked_pre_submission
+status: discovery_submitted
 locked_at_utc: 2026-08-23T19:42:02Z
 objective: Semantic, benchmark-informed discovery across all locally compatible LIBERO tasks, including LIBERO-90, with untouched task/seed confirmation reserve.
 predecessor:
@@ -55,4 +55,10 @@ validation_gate:
   minimum_stress_failure_rate: 0.40
   minimum_intervention_headroom: 0.20
   training_prohibited_before_gate: true
-jobs: {}
+jobs:
+  semantic_discovery:
+    job_id: 15240986.pbs101
+    requested_walltime: 01:00:00
+    requested_ngpus: 1
+    plan_sha256: fbb3d31475e83762d0a6b93c4b90fda9779633d5111f9d33eb04fd7288a7aa20
+    state_at_submission: queued
