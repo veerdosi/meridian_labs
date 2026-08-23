@@ -54,13 +54,25 @@ module load python/3.8.13
 export LIBERO_CONFIG_PATH="$ROOT/config/libero"
 export PYTHONPATH="$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
 export MUJOCO_GL=egl
-export MUJOCO_EGL_DEVICE_ID="${CUDA_VISIBLE_DEVICES%%,*}"
+ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES%%,*}"
+if [[ "$ALLOCATED_GPU" =~ ^[0-9]+$ ]]; then
+  EGL_DEVICE_INDEX="$ALLOCATED_GPU"
+else
+  EGL_DEVICE_INDEX=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader \
+    | awk -F ', ' -v uuid="$ALLOCATED_GPU" '$2 == uuid { print $1; exit }')
+fi
+: "${EGL_DEVICE_INDEX:?could not map allocated GPU $ALLOCATED_GPU to an EGL device index}"
+# The legacy robosuite check only accepts numeric CUDA device identifiers, while
+# newer PBS nodes may supply a UUID. The LIBERO client is CPU-only, so normalize
+# its view after the already-running policy server has inherited the PBS value.
+export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
+export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
   --host 127.0.0.1 --port 8000 \
   --plans "$PLANS_FILE" \
   --output "$RUN_ROOT/rollouts" \
   > >(tee "$RUN_ROOT/runner.log") 2>&1
 
-printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\n' \
-  "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" > "$RUN_ROOT/inputs.txt"
+printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\negl_device_index=%s\n' \
+  "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
