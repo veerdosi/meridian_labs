@@ -68,3 +68,4 @@ jobs:
     requested_walltime: 00:55:00
     maximum_su_at_64_su_per_gpu_hour: 58.6666666667
     plan: all.jsonl
+    plan_order: round-robin across the four suites so any walltime truncation cannot systematically omit a suite
