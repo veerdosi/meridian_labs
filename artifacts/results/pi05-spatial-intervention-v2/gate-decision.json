@@ -1,0 +1,52 @@
+{
+  "arms": {
+    "random_dose_8": {
+      "regression_success_rate": 1.0,
+      "regression_successes": 20,
+      "regression_trials": 20,
+      "target_success_rate": 0.925,
+      "target_successes": 37,
+      "target_trials": 40,
+      "target_wilson_95": [
+        0.8013546984090248,
+        0.9741644432281419
+      ]
+    },
+    "released_checkpoint": {
+      "regression_success_rate": 0.95,
+      "regression_successes": 19,
+      "regression_trials": 20,
+      "target_success_rate": 0.525,
+      "target_successes": 21,
+      "target_trials": 40,
+      "target_wilson_95": [
+        0.37497106853929735,
+        0.6706477044981831
+      ]
+    },
+    "targeted_dose_8": {
+      "regression_success_rate": 1.0,
+      "regression_successes": 20,
+      "regression_trials": 20,
+      "target_success_rate": 1.0,
+      "target_successes": 40,
+      "target_trials": 40,
+      "target_wilson_95": [
+        0.9123754607496077,
+        1.0
+      ]
+    }
+  },
+  "gate": "positive",
+  "next_action": "release_original_then_assess_remaining_oracle_question",
+  "paired_targeted_vs_random": {
+    "discordant": 3,
+    "losses": 0,
+    "ties": 37,
+    "two_sided_sign_p": 0.25,
+    "wins": 3
+  },
+  "rationale": "Targeted success strictly exceeded matched random success without exceeding the locked regression limit.",
+  "regression_limit": 0.02,
+  "targeted_regression_loss": -0.050000000000000044
+}
