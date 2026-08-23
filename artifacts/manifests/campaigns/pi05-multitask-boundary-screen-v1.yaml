@@ -1,5 +1,5 @@
 campaign_id: pi05-multitask-boundary-screen-v1
-status: combined_screen_queued
+status: superseded_without_compute
 locked_at: 2026-08-23T19:15:45Z
 activation: user_directed_harder_task_confirmation
 scientific_context: The Spatial v2 gate was positive by its locked point rule, but targeted versus random was not statistically decisive and targeted reached a ceiling.
@@ -66,7 +66,12 @@ jobs:
     cancellation_reason: Repacked into a single combined allocation to enforce the user-set 60 SU screening cap.
   combined_replacement:
     job_id: 15240965.pbs101
-    state: queued_at_submission
+    state: scheduler_terminated_before_start
+    final_state_checked_at: 2026-08-23T19:37:00Z
+    actual_walltime_seconds: 0
+    actual_su: 0
+    termination_comment: Not Running; would exceed overall gdev ngpus limit and terminated.
+    superseded_by: pi05-libero-semantic-discovery-v1
     requested_walltime: 02:00:00
     walltime_revision_reason: User clarified that 60 SU is guidance rather than a hard ceiling; allow all 160 locked trials to finish.
     plan: all.jsonl

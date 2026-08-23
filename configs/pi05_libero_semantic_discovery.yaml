@@ -1,0 +1,49 @@
+id: pi05-libero-semantic-discovery-v1
+status: locked_before_discovery_outcomes
+locked_at_utc: 2026-08-23T19:42:02Z
+compatible_suites: [libero_spatial, libero_object, libero_goal, libero_10, libero_90]
+inventory:
+  expected_suite_counts: {libero_spatial: 10, libero_object: 10, libero_goal: 10, libero_10: 10, libero_90: 90}
+  authoritative_task_map: third_party/libero/libero/libero/benchmark/libero_suite_task_map.py
+  authoritative_bddl_root: third_party/libero/libero/libero/bddl_files
+benchmark_discovery_priors:
+  source: https://github.com/Physical-Intelligence/openpi/tree/main/examples/libero#results
+  protocol_note: π0.5 30k released checkpoint aggregate success; discovery prioritization only.
+  suites:
+    libero_spatial: {reported_success: 0.988, failure_prior: 0.012, reported: true}
+    libero_object: {reported_success: 0.982, failure_prior: 0.018, reported: true}
+    libero_goal: {reported_success: 0.980, failure_prior: 0.020, reported: true}
+    libero_10: {reported_success: 0.924, failure_prior: 0.076, reported: true}
+    libero_90: {reported_success: null, failure_prior: 0.050, reported: false}
+  prohibition: Published or third-party benchmark outcomes may rank discovery tasks but never count as confirmation evidence.
+selection:
+  discovery_count: 28
+  discovery_quota: {libero_spatial: 3, libero_object: 3, libero_goal: 4, libero_10: 7, libero_90: 11}
+  confirmation_reserve_count: 12
+  confirmation_quota: {libero_spatial: 2, libero_object: 2, libero_goal: 2, libero_10: 3, libero_90: 3}
+  score_weights: {interaction_complexity: 0.40, semantic_rarity: 0.20, benchmark_failure_prior: 0.20, unreported_suite_uncertainty: 0.20}
+  greedy_weights: {prior_score: 0.65, categorical_diversity: 0.35}
+  tie_breaker: [higher_greedy_score, higher_prior_score, lexicographically_smaller_suite, smaller_task_id]
+  deterministic: true
+discovery_screen:
+  profiles: [canonical, compound_view_visual]
+  canonical: {camera_x: 0.0, camera_yaw_deg: 0.0, brightness: 1.0, occlusion: 0.0, visual_distractors: 0.0, replan_steps: 5.0, action_noise: 0.0}
+  compound_view_visual: {camera_x: 0.10, camera_yaw_deg: 35.0, brightness: 1.0, occlusion: 0.22, visual_distractors: 4.0, replan_steps: 5.0, action_noise: 0.0}
+  seed_base: 41000
+  init_state_rule: (task_id * 7 + suite_index * 11) modulo 50
+  total_rollouts: 56
+  expected_su_guidance: 60
+  requested_walltime: 01:00:00
+confirmation_reserve:
+  discovery_exclusion: Reserved tasks cannot appear in discovery or boundary validation.
+  seeds: [51000, 51001, 51002, 51003, 51004, 51005, 51006, 51007, 51008, 51009]
+  use: Only after a boundary passes locked repeatability and canonical-control validation.
+validation_gate:
+  candidates: 6
+  repeats: 5
+  required_conditions: [canonical, compound_view_visual_canonical_control, viewpoint_only, visual_only]
+  minimum_canonical_success_rate: 0.60
+  minimum_stress_failure_rate: 0.40
+  minimum_intervention_headroom: 0.20
+  canonical_control: {replan_steps: 5.0, action_noise: 0.0}
+  prohibition: No training before a candidate passes every validation threshold and the deterministic locked ranking selects it.
