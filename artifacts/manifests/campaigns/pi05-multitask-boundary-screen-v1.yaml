@@ -1,5 +1,5 @@
 campaign_id: pi05-multitask-boundary-screen-v1
-status: locked_pre_submission
+status: screen_submitted
 locked_at: 2026-08-23T19:15:45Z
 activation: user_directed_harder_task_confirmation
 scientific_context: The Spatial v2 gate was positive by its locked point rule, but targeted versus random was not statistically decisive and targeted reached a ceiling.
@@ -33,4 +33,20 @@ cost_envelope:
   screen_expected_su: [25, 60]
   validation_expected_su: [15, 35]
   accounting_rule: Record actual PBS walltime and charged resources for successes, failures, and cancellations.
-jobs: {}
+jobs:
+  libero_spatial:
+    job_id: 15240960.pbs101
+    requested_walltime: 00:30:00
+    plan: libero_spatial.jsonl
+  libero_object:
+    job_id: 15240961.pbs101
+    requested_walltime: 00:30:00
+    plan: libero_object.jsonl
+  libero_goal:
+    job_id: 15240962.pbs101
+    requested_walltime: 00:30:00
+    plan: libero_goal.jsonl
+  libero_10:
+    job_id: 15240963.pbs101
+    requested_walltime: 00:30:00
+    plan: libero_10.jsonl
