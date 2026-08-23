@@ -182,6 +182,23 @@ class ResourceCost(BaseModel):
     source: str
 
 
+class TrainingRun(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("train"))
+    experiment_id: str
+    intervention_id: str
+    arm: InterventionArm
+    dataset_repo_id: str
+    starting_checkpoint: str
+    output_checkpoint: str
+    config: str
+    method: str
+    steps: int = Field(gt=0)
+    metrics: dict[str, float] = Field(default_factory=dict)
+    cost: ResourceCost
+    artifacts: list[ArtifactRef] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class EvaluationResult(BaseModel):
     id: str = Field(default_factory=lambda: new_id("eval"))
     experiment_id: str
