@@ -15,12 +15,14 @@
       "source": "nscc_pbs_finished_record",
       "su": 8.8533333312
     },
-    "created_at": "2026-08-23T16:42:25.408035Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "eval_d09cab3091774ad6",
+    "id": "eval_pi05-spatial-intervention-v1_none",
     "intervention_id": "pi05_spatial_none_v1",
     "regression_delta": 0.0,
     "regression_success_rate": 1.0,
+    "regression_successes": 12,
+    "regression_trials": 12,
     "seed_results": {
       "8101": 0.5,
       "8102": 0.5,
@@ -32,7 +34,9 @@
       0.25819502085709295,
       0.6579179916924003
     ],
-    "target_success_rate": 0.45
+    "target_success_rate": 0.45,
+    "target_successes": 9,
+    "target_trials": 20
   },
   {
     "arm": "targeted",
@@ -50,12 +54,14 @@
       "source": "nscc_pbs_finished_record",
       "su": 16.3022222208
     },
-    "created_at": "2026-08-23T16:42:25.409681Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "eval_f095c4e175ab4df8",
+    "id": "eval_pi05-spatial-intervention-v1_targeted",
     "intervention_id": "pi05_spatial_targeted_v1",
     "regression_delta": 0.0,
     "regression_success_rate": 1.0,
+    "regression_successes": 12,
+    "regression_trials": 12,
     "seed_results": {
       "8101": 0.75,
       "8102": 0.75,
@@ -67,7 +73,9 @@
       0.5839782779742401,
       0.9193436467288
     ],
-    "target_success_rate": 0.8
+    "target_success_rate": 0.8,
+    "target_successes": 16,
+    "target_trials": 20
   },
   {
     "arm": "random",
@@ -85,12 +93,14 @@
       "source": "nscc_pbs_finished_record",
       "su": 14.0444444416
     },
-    "created_at": "2026-08-23T16:42:25.411436Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "eval_73ea174c3cbf4cf1",
+    "id": "eval_pi05-spatial-intervention-v1_random",
     "intervention_id": "pi05_spatial_random_v1",
     "regression_delta": 0.0,
     "regression_success_rate": 1.0,
+    "regression_successes": 12,
+    "regression_trials": 12,
     "seed_results": {
       "8101": 1.0,
       "8102": 1.0,
@@ -102,7 +112,9 @@
       0.7638641064874331,
       0.9911187805671268
     ],
-    "target_success_rate": 0.95
+    "target_success_rate": 0.95,
+    "target_successes": 19,
+    "target_trials": 20
   },
   {
     "arm": "original_distribution",
@@ -120,12 +132,14 @@
       "source": "nscc_pbs_finished_record",
       "su": 15.8222222208
     },
-    "created_at": "2026-08-23T16:42:25.413086Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "eval_8622209ce03b499f",
+    "id": "eval_pi05-spatial-intervention-v1_original_distribution",
     "intervention_id": "pi05_spatial_original_v1",
     "regression_delta": 0.0,
     "regression_success_rate": 1.0,
+    "regression_successes": 12,
+    "regression_trials": 12,
     "seed_results": {
       "8101": 1.0,
       "8102": 0.75,
@@ -137,7 +151,9 @@
       0.6989617935882066,
       0.9721341060158468
     ],
-    "target_success_rate": 0.9
+    "target_success_rate": 0.9,
+    "target_successes": 18,
+    "target_trials": 20
   },
   {
     "arm": "oracle_targeted",
@@ -155,12 +171,14 @@
       "source": "nscc_pbs_finished_record",
       "su": 15.5555555584
     },
-    "created_at": "2026-08-23T16:42:25.414729Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "eval_9891d141602b4cd7",
+    "id": "eval_pi05-spatial-intervention-v1_oracle_targeted",
     "intervention_id": "pi05_spatial_oracle_v1",
     "regression_delta": 0.0,
     "regression_success_rate": 1.0,
+    "regression_successes": 12,
+    "regression_trials": 12,
     "seed_results": {
       "8101": 1.0,
       "8102": 1.0,
@@ -172,6 +190,8 @@
       0.7638641064874331,
       0.9911187805671268
     ],
-    "target_success_rate": 0.95
+    "target_success_rate": 0.95,
+    "target_successes": 19,
+    "target_trials": 20
   }
 ]

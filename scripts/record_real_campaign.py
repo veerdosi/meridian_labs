@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -58,7 +59,14 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     run_spec = yaml.safe_load(args.runs.read_text())
+    recorded_value = run_spec["recorded_at"]
+    recorded_at = (
+        recorded_value
+        if isinstance(recorded_value, datetime)
+        else datetime.fromisoformat(recorded_value)
+    )
     spec = ExperimentSpec.model_validate(yaml.safe_load(Path(run_spec["config"]).read_text()))
+    spec = spec.model_copy(update={"created_at": recorded_at})
     campaign = yaml.safe_load(Path(run_spec["campaign"]).read_text())
     interventions = {
         InterventionArm(item["arm"]): InterventionSpec.model_validate(item)
@@ -79,6 +87,7 @@ def main() -> None:
         target = [row for row in rows if row["parameters"].get("evaluation_suite") == "target"]
         regression = [row for row in rows if row not in target]
         target_successes = sum(row["success"] for row in target)
+        regression_successes = sum(row["success"] for row in regression)
         target_outcomes[arm] = {row["id"]: bool(row["success"]) for row in target}
         regression_rate = sum(row["success"] for row in regression) / len(regression)
         if arm == InterventionArm.NONE:
@@ -90,15 +99,21 @@ def main() -> None:
         evaluations.append(
             EvaluationResult(
                 experiment_id=spec.id,
+                id=f"eval_{campaign['campaign_id']}_{arm.value}",
                 intervention_id=intervention.id,
                 checkpoint_id=str(item["checkpoint"]),
                 arm=arm,
+                target_successes=target_successes,
+                target_trials=len(target),
                 target_success_rate=target_successes / len(target),
                 target_ci=_wilson(target_successes, len(target)),
+                regression_successes=regression_successes,
+                regression_trials=len(regression),
                 regression_success_rate=regression_rate,
                 regression_delta=0.0,
                 seed_results={seed: sum(values) / len(values) for seed, values in per_seed.items()},
                 cost=resource_cost(manifest),
+                created_at=recorded_at,
             )
         )
         if arm == InterventionArm.NONE:
@@ -108,6 +123,7 @@ def main() -> None:
             f"{data_manifest['artifacts']['external_ssd_path']}/{arm.value}/rollouts.jsonl"
         )
         dataset = DatasetManifest(
+            id=f"dataset_{campaign['campaign_id']}_{arm.value}",
             intervention_id=intervention.id,
             source="successful_action_replay_in_parameterized_libero",
             trajectory_count=intervention.trajectory_count,
@@ -117,11 +133,13 @@ def main() -> None:
             ],
             quality_metrics={"valid_fraction": 1.0, "success_fraction": 1.0},
             format="meridian-trajectory-v1",
+            created_at=recorded_at,
         )
         datasets.append(dataset)
         phases = manifest["phases"]
         training_runs.append(
             TrainingRun(
+                id=f"train_{campaign['campaign_id']}_{arm.value}",
                 experiment_id=spec.id,
                 intervention_id=intervention.id,
                 arm=arm,
@@ -133,6 +151,7 @@ def main() -> None:
                 steps=int(manifest["training"]["steps"]),
                 metrics={key: float(value) for key, value in phases.items()},
                 cost=resource_cost(manifest),
+                created_at=recorded_at,
             )
         )
 
@@ -149,15 +168,15 @@ def main() -> None:
     database_path = args.output / "experiment.sqlite"
     database_path.unlink(missing_ok=True)
     with ExperimentStore(database_path) as store:
-        store.put("experiment", spec)
+        store.put("experiment", spec, recorded_at)
         for intervention in interventions.values():
-            store.put("intervention", intervention)
+            store.put("intervention", intervention, recorded_at)
         for dataset in datasets:
-            store.put("dataset", dataset)
+            store.put("dataset", dataset, recorded_at)
         for training in training_runs:
-            store.put("training_run", training)
+            store.put("training_run", training, recorded_at)
         for evaluation in evaluations:
-            store.put("evaluation", evaluation)
+            store.put("evaluation", evaluation, recorded_at)
     (args.output / "evaluations.json").write_text(
         json.dumps([item.model_dump(mode="json") for item in evaluations], indent=2, sort_keys=True)
     )
@@ -194,17 +213,42 @@ def main() -> None:
     random = next(item for item in evaluations if item.arm == InterventionArm.RANDOM)
     original = next(item for item in evaluations if item.arm == InterventionArm.ORIGINAL)
     none = next(item for item in evaluations if item.arm == InterventionArm.NONE)
-    lines = [
-        "# π0.5 / LIBERO intervention result",
-        "",
-        "## Learned boundary and mechanism",
-        "",
+    report_context = campaign.get("report_context", {})
+    boundary_summary = report_context.get(
+        "learned_boundary_and_mechanism",
         (
             "The deployed `pi05_libero` policy had 40/40 successes in the initial envelope, "
             "then 2/24 failures in the wider search. One compound view/visual profile reproduced "
             "in 4/5 trials. Matched probes identified two-step replanning as the causal amplifier: "
             "0/5 success with short replanning versus 3/5 with canonical replanning."
         ),
+    )
+    hypothesis_supported = decision.selected_arm == InterventionArm.TARGETED
+    hypothesis_statement = campaign.get("hypothesis", {}).get(
+        "statement", "Targeted data has higher intervention value than fair baselines."
+    )
+    conclusion = (
+        "The preregistered targeted-selection hypothesis is supported at this dose by the locked "
+        "point-estimate rule. A larger dose is required only if requested by the decision engine."
+        if hypothesis_supported
+        else "The preregistered targeted-selection hypothesis is falsified at this dose."
+    )
+    next_action = report_context.get(
+        "next_action_on_support" if hypothesis_supported else "next_action_on_reject",
+        (
+            "Run the predeclared next dose and broaden cross-task confirmation."
+            if hypothesis_supported
+            else "Refine the intervention-value model; do not scale this targeted strategy."
+        ),
+    )
+    lines = [
+        "# π0.5 / LIBERO intervention result",
+        "",
+        "## Learned boundary and mechanism",
+        "",
+        boundary_summary,
+        "",
+        f"Preregistered hypothesis: {hypothesis_statement}",
         "",
         "## Controlled comparison",
         "",
@@ -212,8 +256,13 @@ def main() -> None:
         "|---|---:|---:|---:|---:|",
     ]
     for result in ranked:
+        target_count = (
+            f"{result.target_successes}/{result.target_trials} "
+            if result.target_trials is not None
+            else ""
+        )
         lines.append(
-            f"| {result.arm.value} | {result.target_success_rate:.0%} | "
+            f"| {result.arm.value} | {target_count}({result.target_success_rate:.0%}) | "
             f"[{result.target_ci[0]:.0%}, {result.target_ci[1]:.0%}] | "
             f"{result.regression_success_rate:.0%} ({result.regression_delta:+.0%}) | "
             f"{result.cost.su or 0:.2f} |"
@@ -232,9 +281,7 @@ def main() -> None:
             ),
             "",
             (
-                "The targeted-selection hypothesis is therefore falsified at this dose. The "
-                "operationally best tested checkpoint is the highest-ranked arm, while the "
-                "scientific decision is not to scale the narrow targeted intervention."
+                conclusion
             ),
             "",
             (
@@ -255,12 +302,7 @@ def main() -> None:
             "",
             "## Next action",
             "",
-            (
-                "Test whether broad-data gains persist on more tasks and seeds, and refine the "
-                "cartographer's intervention-value model so it can prefer broad coverage when "
-                "the evidence does not justify narrow targeting. Retain canonical replanning as "
-                "a no-training mitigation benchmark."
-            ),
+            next_action,
         ]
     )
     (args.output / "RESULT.md").write_text("\n".join(lines) + "\n")

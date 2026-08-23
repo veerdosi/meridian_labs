@@ -1,4 +1,5 @@
 config: configs/pi05_libero_intervention_campaign.yaml
+recorded_at: 2026-08-23T17:45:00Z
 campaign: artifacts/manifests/interventions/pi05-spatial-campaign-v1.yaml
 data_job_manifest: artifacts/manifests/nscc-jobs/15240091.pbs101.yaml
 cost_summary:

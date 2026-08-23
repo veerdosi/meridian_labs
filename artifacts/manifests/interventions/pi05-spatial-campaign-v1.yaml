@@ -1,6 +1,8 @@
 campaign_id: pi05-spatial-intervention-v1
 experiment_id: exp_pi05_libero_spatial_boundary_v1
 hypothesis_id: compound_visual_coverage_x_short_replanning
+hypothesis:
+  statement: Uniform data sampled from the selected compound visual/viewpoint boundary improves held-out short-replanning performance more than equal-size random and original-distribution data.
 source_decisions:
   - artifacts/manifests/science/pi05-spatial-wide-probe1-decision.yaml
   - artifacts/manifests/science/pi05-spatial-control-probe2-decision.yaml
@@ -77,3 +79,5 @@ rollout_budget:
   completed_before_campaign: 99
   planned_campaign_evaluations: 160
   configured_total_limit: 320
+report_context:
+  next_action_on_reject: Test whether broad-data gains persist on more tasks and seeds, and refine the cartographer's intervention-value model so it can prefer broad coverage when the evidence does not justify narrow targeting. Retain canonical replanning as a no-training mitigation benchmark.

@@ -16,10 +16,10 @@
       "source": "nscc_pbs_finished_record",
       "su": 16.3022222208
     },
-    "created_at": "2026-08-23T16:42:25.409713Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "dataset_repo_id": "meridian/pi05-spatial-intervention-v1_targeted",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "train_38b95aeda1f64874",
+    "id": "train_pi05-spatial-intervention-v1_targeted",
     "intervention_id": "pi05_spatial_targeted_v1",
     "method": "LoRA",
     "metrics": {
@@ -49,10 +49,10 @@
       "source": "nscc_pbs_finished_record",
       "su": 14.0444444416
     },
-    "created_at": "2026-08-23T16:42:25.411456Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "dataset_repo_id": "meridian/pi05-spatial-intervention-v1_random",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "train_c6c32228724d4309",
+    "id": "train_pi05-spatial-intervention-v1_random",
     "intervention_id": "pi05_spatial_random_v1",
     "method": "LoRA",
     "metrics": {
@@ -82,10 +82,10 @@
       "source": "nscc_pbs_finished_record",
       "su": 15.8222222208
     },
-    "created_at": "2026-08-23T16:42:25.413104Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "dataset_repo_id": "meridian/pi05-spatial-intervention-v1_original_distribution",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "train_67e79684b090471a",
+    "id": "train_pi05-spatial-intervention-v1_original_distribution",
     "intervention_id": "pi05_spatial_original_v1",
     "method": "LoRA",
     "metrics": {
@@ -115,10 +115,10 @@
       "source": "nscc_pbs_finished_record",
       "su": 15.5555555584
     },
-    "created_at": "2026-08-23T16:42:25.414746Z",
+    "created_at": "2026-08-23T17:45:00Z",
     "dataset_repo_id": "meridian/pi05-spatial-intervention-v1_oracle_targeted",
     "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
-    "id": "train_0ae7e3fed8b54f93",
+    "id": "train_pi05-spatial-intervention-v1_oracle_targeted",
     "intervention_id": "pi05_spatial_oracle_v1",
     "method": "LoRA",
     "metrics": {

@@ -216,8 +216,12 @@ class EvaluationResult(BaseModel):
     intervention_id: str
     checkpoint_id: str
     arm: InterventionArm
+    target_successes: int | None = Field(default=None, ge=0)
+    target_trials: int | None = Field(default=None, ge=0)
     target_success_rate: float = Field(ge=0, le=1)
     target_ci: tuple[float, float]
+    regression_successes: int | None = Field(default=None, ge=0)
+    regression_trials: int | None = Field(default=None, ge=0)
     regression_success_rate: float = Field(ge=0, le=1)
     regression_delta: float
     seed_results: dict[int, float]
