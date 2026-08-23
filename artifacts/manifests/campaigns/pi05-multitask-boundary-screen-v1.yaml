@@ -1,5 +1,5 @@
 campaign_id: pi05-multitask-boundary-screen-v1
-status: screen_submitted
+status: screen_resubmission_pending
 locked_at: 2026-08-23T19:15:45Z
 activation: user_directed_harder_task_confirmation
 scientific_context: The Spatial v2 gate was positive by its locked point rule, but targeted versus random was not statistically decisive and targeted reached a ceiling.
@@ -38,15 +38,32 @@ jobs:
     job_id: 15240960.pbs101
     requested_walltime: 00:30:00
     plan: libero_spatial.jsonl
+    final_state: cancelled_before_start
+    actual_su: 0
+    cancellation_reason: Repacked into a single combined allocation to enforce the user-set 60 SU screening cap.
   libero_object:
     job_id: 15240961.pbs101
     requested_walltime: 00:30:00
     plan: libero_object.jsonl
+    final_state: cancelled_before_start
+    actual_su: 0
+    cancellation_reason: Repacked into a single combined allocation to enforce the user-set 60 SU screening cap.
   libero_goal:
     job_id: 15240962.pbs101
     requested_walltime: 00:30:00
     plan: libero_goal.jsonl
+    final_state: cancelled_before_start
+    actual_su: 0
+    cancellation_reason: Repacked into a single combined allocation to enforce the user-set 60 SU screening cap.
   libero_10:
     job_id: 15240963.pbs101
     requested_walltime: 00:30:00
     plan: libero_10.jsonl
+    final_state: cancelled_before_start
+    actual_su: 0
+    cancellation_reason: Repacked into a single combined allocation to enforce the user-set 60 SU screening cap.
+  combined_replacement:
+    state: pending_submission
+    requested_walltime: 00:55:00
+    maximum_su_at_64_su_per_gpu_hour: 58.6666666667
+    plan: all.jsonl

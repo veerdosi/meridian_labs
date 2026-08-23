@@ -1,4 +1,5 @@
 {
+  "combined_path": "configs/plans/pi05-multitask-boundary-screen-v1/all.jsonl",
   "libero_10": {
     "path": "configs/plans/pi05-multitask-boundary-screen-v1/libero_10.jsonl",
     "rollouts": 40

@@ -21,12 +21,19 @@ def main() -> None:
     plans_by_suite = build_multitask_screen_plans(config)
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
+    combined = []
     for suite, plans in plans_by_suite.items():
         path = args.output / f"{suite}.jsonl"
         with path.open("w") as stream:
             for plan in plans:
                 stream.write(json.dumps(plan, sort_keys=True) + "\n")
         summary[suite] = {"rollouts": len(plans), "path": str(path)}
+        combined.extend(plans)
+    combined_path = args.output / "all.jsonl"
+    with combined_path.open("w") as stream:
+        for plan in combined:
+            stream.write(json.dumps(plan, sort_keys=True) + "\n")
+    summary["combined_path"] = str(combined_path)
     summary["total_rollouts"] = sum(len(plans) for plans in plans_by_suite.values())
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True))
     print(json.dumps(summary, sort_keys=True))
