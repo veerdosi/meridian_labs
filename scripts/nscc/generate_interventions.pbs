@@ -1,0 +1,66 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+#PBS -N meridian-generate-data
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${SOURCE_ROLLOUTS:?JSONL containing successful source trajectories}"
+: "${PLANS_DIR:?directory containing one <arm>.jsonl replay plan per arm}"
+: "${RUN_ID:?unique intervention campaign id}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+OPENPI_ROOT="$ROOT/src/openpi"
+RUN_ROOT="$ROOT/artifacts/intervention-data/$RUN_ID/$PBS_JOBID"
+ARMS=${ARMS:-targeted,random,original_distribution,oracle_targeted}
+export PYTHONUNBUFFERED=1
+
+mkdir -p "$RUN_ROOT"
+module load python/3.8.13 cuda/12.2.2
+nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw \
+  --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
+MONITOR_PID=$!
+cleanup() { kill "$MONITOR_PID" 2>/dev/null || true; }
+trap cleanup EXIT
+
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$ROOT/harness:$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
+export MUJOCO_GL=egl
+ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES%%,*}"
+if [[ "$ALLOCATED_GPU" =~ ^[0-9]+$ ]]; then
+  EGL_DEVICE_INDEX="$ALLOCATED_GPU"
+else
+  EGL_DEVICE_INDEX=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader \
+    | awk -F ', ' -v uuid="$ALLOCATED_GPU" '$2 == uuid { print $1; exit }')
+fi
+: "${EGL_DEVICE_INDEX:?could not map allocated GPU $ALLOCATED_GPU to EGL index}"
+export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
+export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
+
+IFS=',' read -r -a ARM_NAMES <<< "$ARMS"
+for arm in "${ARM_NAMES[@]}"; do
+  plan="$PLANS_DIR/$arm.jsonl"
+  test -s "$plan"
+  "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/replay_visual_intervention.py" \
+    --base-rollout "$SOURCE_ROLLOUTS" \
+    --plans "$plan" \
+    --output "$RUN_ROOT/$arm" \
+    > >(tee "$RUN_ROOT/$arm.log") 2>&1
+  "$ROOT/envs/libero/bin/python" - "$RUN_ROOT/$arm/rollouts.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+failed = [record["id"] for record in records if not record["success"]]
+if failed:
+    raise SystemExit(f"replay quality veto: {len(failed)} failures: {failed}")
+print(json.dumps({"episodes": len(records), "successes": len(records)}, sort_keys=True))
+PY
+done
+
+printf 'source_rollouts=%s\nplans_dir=%s\narms=%s\negl_device_index=%s\n' \
+  "$SOURCE_ROLLOUTS" "$PLANS_DIR" "$ARMS" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
+find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
