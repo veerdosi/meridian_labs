@@ -53,6 +53,9 @@ else:
     raise TimeoutError("OpenPI policy server did not become ready within 20 minutes")
 PY
 
+module unload python/3.11.7-gcc11
+module load python/3.8.13
+
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
   --plans "$ROOT/harness/configs/pi05_gate0_plans.jsonl" \
   --output "$RUN_ROOT/rollouts"

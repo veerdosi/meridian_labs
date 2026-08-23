@@ -1,0 +1,23 @@
+job_id: 15239144.pbs101
+purpose: gate0_pi05_libero_rollout
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 5400}
+actual:
+  walltime_seconds: 702
+  gpu_hours: 0.195
+  su_estimated: 12.48
+exit_status: 127
+result: failed_before_simulation
+successful_stages:
+  - downloaded released pi05_libero checkpoint to NSCC scratch
+  - restored 6.2 GiB of parameters through Orbax
+  - started live OpenPI WebSocket policy server on the A100
+failed_stage: launch separate Python 3.8 LIBERO client
+cause: Python 3.11 module library path did not include libpython3.8.so.1.0
+decision: switch from the Python 3.11 module to Python 3.8 after the policy server is ready
+checkpoint:
+  source: gs://openpi-assets/checkpoints/pi05_libero
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/cache/openpi/openpi-assets/checkpoints/pi05_libero
+  files: 16
+  bytes: 12439085481

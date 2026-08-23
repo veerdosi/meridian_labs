@@ -1,0 +1,23 @@
+job_id: 15239309.pbs101
+purpose: inspect_openpi_training_cli
+queue: qdev
+project: personal-veer001
+requested: {ncpus: 1, ngpus: 0, walltime_seconds: 600}
+actual:
+  walltime_seconds: 483
+  cpu_core_hours: 0.1341666667
+  su_estimated: 0.1341666667
+exit_status: 0
+result: passed
+confirmed_overrides:
+  - exp-name
+  - assets-base-dir
+  - checkpoint-base-dir
+  - batch-size
+  - num-train-steps
+  - overwrite
+  - wandb-enabled
+  - weight-loader.params-path
+  - data.repo-id
+  - data.assets.assets-dir
+  - data.assets.asset-id

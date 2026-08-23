@@ -29,12 +29,14 @@ class OpenPILiberoAdapter(PolicyAdapter):
         rollout_executor: RolloutExecutor | None = None,
         trainer: Trainer | None = None,
         evaluator: Evaluator | None = None,
+        config_name: str = "pi05_libero",
     ) -> None:
         self.host = host
         self.port = port
         self.rollout_executor = rollout_executor
         self.trainer = trainer
         self.evaluator = evaluator
+        self.config_name = config_name
         self.checkpoint_id = "unloaded"
         self.checkpoint_source = ""
         self._client: Any = None
@@ -84,7 +86,7 @@ class OpenPILiberoAdapter(PolicyAdapter):
             str(python),
             str(openpi_root / "scripts/serve_policy.py"),
             "policy:checkpoint",
-            "--policy.config=pi05_libero",
+            f"--policy.config={self.config_name}",
             f"--policy.dir={self.checkpoint_source}",
             f"--port={self.port}",
         ]

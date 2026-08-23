@@ -1,0 +1,100 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+#PBS -N meridian-gate0-adapt
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${BASELINE_JOB_ID:?submit with qsub -v BASELINE_JOB_ID=<successful-gate0-job-id>}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+OPENPI_ROOT="$ROOT/src/openpi"
+BASELINE_ROOT="$ROOT/artifacts/gate0/$BASELINE_JOB_ID"
+RUN_ROOT="$ROOT/artifacts/gate0-adapt/$PBS_JOBID"
+DATASET_REPO="meridian/gate0_${BASELINE_JOB_ID%%.*}"
+export OPENPI_DATA_HOME="$ROOT/cache/openpi"
+export UV_CACHE_DIR="$ROOT/cache/uv"
+export HF_LEROBOT_HOME="$ROOT/datasets/lerobot"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.9
+export PYTHONUNBUFFERED=1
+export MERIDIAN_DATASET_REPO="$DATASET_REPO"
+export MERIDIAN_BATCH_SIZE=2
+export MERIDIAN_TRAIN_STEPS=2
+export MERIDIAN_WARMUP_STEPS=1
+export MERIDIAN_DECAY_STEPS=2
+export MERIDIAN_SAVE_INTERVAL=1
+export MERIDIAN_CHECKPOINT_ROOT="$ROOT/checkpoints"
+
+mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME" "$MERIDIAN_CHECKPOINT_ROOT"
+module load python/3.11.7-gcc11 cuda/12.2.2
+nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
+MONITOR_PID=$!
+SERVER_PID=
+cleanup() {
+  if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi
+  kill "$MONITOR_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+phase_start=$(date +%s)
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_meridian_to_lerobot.py" \
+  --rollouts "$BASELINE_ROOT/rollouts/rollouts.jsonl" \
+  --repo-id "$DATASET_REPO" \
+  --output-root "$HF_LEROBOT_HOME" | tee "$RUN_ROOT/conversion.json"
+conversion_end=$(date +%s)
+
+cd "$OPENPI_ROOT"
+"$ROOT/envs/openpi/bin/python" scripts/train.py meridian_pi05_libero \
+  --exp-name "gate0-${BASELINE_JOB_ID%%.*}" \
+  --overwrite | tee "$RUN_ROOT/training.log"
+training_end=$(date +%s)
+
+CHECKPOINT="$MERIDIAN_CHECKPOINT_ROOT/meridian_pi05_libero/gate0-${BASELINE_JOB_ID%%.*}/1"
+test -d "$CHECKPOINT/params"
+"$ROOT/envs/openpi/bin/python" scripts/serve_policy.py \
+  --port 8001 --record \
+  policy:checkpoint \
+  --policy.config meridian_pi05_libero \
+  --policy.dir "$CHECKPOINT" > "$RUN_ROOT/server.log" 2>&1 &
+SERVER_PID=$!
+
+"$ROOT/envs/openpi/bin/python" - <<'PY'
+import socket
+import time
+
+deadline = time.monotonic() + 1200
+while time.monotonic() < deadline:
+    try:
+        with socket.create_connection(("127.0.0.1", 8001), timeout=2):
+            break
+    except OSError:
+        time.sleep(5)
+else:
+    raise TimeoutError("adapted OpenPI policy server did not become ready within 20 minutes")
+PY
+server_ready=$(date +%s)
+
+module unload python/3.11.7-gcc11
+module load python/3.8.13
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
+export MUJOCO_GL=egl
+export MUJOCO_EGL_DEVICE_ID=0
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
+  --host 127.0.0.1 --port 8001 \
+  --plans "$ROOT/harness/configs/pi05_gate0_plans.jsonl" \
+  --output "$RUN_ROOT/rollouts"
+evaluation_end=$(date +%s)
+
+printf '{"conversion_seconds":%d,"training_seconds":%d,"server_start_seconds":%d,"evaluation_seconds":%d}\n' \
+  "$((conversion_end-phase_start))" \
+  "$((training_end-conversion_end))" \
+  "$((server_ready-training_end))" \
+  "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
+printf 'checkpoint=%s\n' "$CHECKPOINT" > "$RUN_ROOT/checkpoint.txt"
+find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
+

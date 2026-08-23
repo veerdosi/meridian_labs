@@ -9,13 +9,21 @@ MARKER = "    #\n    # Fine-tuning Aloha configs.\n"
 BLOCK = r"""    # BEGIN MERIDIAN MANAGED CONFIG
     TrainConfig(
         name="meridian_pi05_libero",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False),
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
         data=LeRobotLiberoDataConfig(
             repo_id=os.environ.get("MERIDIAN_DATASET_REPO", "meridian/gate0"),
             base_config=DataConfig(prompt_from_task=True),
             assets=AssetsConfig(
-                assets_dir="gs://openpi-assets/checkpoints/pi05_libero/assets",
-                asset_id="physical-intelligence/libero",
+                assets_dir=os.environ.get(
+                    "MERIDIAN_ASSETS_DIR", "gs://openpi-assets/checkpoints/pi05_libero/assets"
+                ),
+                asset_id=os.environ.get("MERIDIAN_ASSET_ID", "physical-intelligence/libero"),
             ),
             extra_delta_transform=False,
         ),
@@ -27,10 +35,18 @@ BLOCK = r"""    # BEGIN MERIDIAN MANAGED CONFIG
             decay_lr=float(os.environ.get("MERIDIAN_DECAY_LR", "5e-5")),
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
         weight_loader=weight_loaders.CheckpointWeightLoader(
             "gs://openpi-assets/checkpoints/pi05_libero/params"
         ),
+        assets_base_dir=os.environ.get("MERIDIAN_ASSETS_BASE_DIR", "./assets"),
         checkpoint_base_dir=os.environ.get("MERIDIAN_CHECKPOINT_ROOT", "./checkpoints"),
         num_train_steps=int(os.environ.get("MERIDIAN_TRAIN_STEPS", "2")),
         save_interval=int(os.environ.get("MERIDIAN_SAVE_INTERVAL", "1")),
