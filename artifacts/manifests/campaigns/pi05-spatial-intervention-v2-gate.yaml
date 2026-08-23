@@ -1,5 +1,5 @@
 campaign_id: pi05-spatial-intervention-v2
-status: positive_gate_original_running
+status: complete_positive_gate
 locked_at: 2026-08-23T18:15:44Z
 locked_before_targeted_or_random_outcomes: true
 fixed_evaluation_plan:
@@ -28,6 +28,8 @@ jobs:
     hold_applied_at: 2026-08-23T18:15:44Z
     released_at: 2026-08-23T18:34:00Z
     release_reason: Targeted strictly beat random with regression inside the locked limit.
+    final_state: completed
+    result: {target_successes: 8, target_trials: 40, regression_successes: 18, regression_trials: 20}
   oracle_dose_8:
     job_id: 15240817.pbs101
     state_at_lock: queued
@@ -108,3 +110,14 @@ gate_result:
   released_checkpoint: {target_successes: 21, target_trials: 40, regression_successes: 19, regression_trials: 20}
   paired_targeted_vs_random: {wins: 3, losses: 0, ties: 37, two_sided_sign_p: 0.25}
   rationale: Targeted strictly exceeded random and did not exceed the regression limit; release original-distribution. The point-estimate gate is positive, while paired evidence remains statistically non-decisive.
+fair_comparison_result:
+  targeted_gain_over_random: 0.075
+  targeted_gain_over_original_distribution: 0.80
+  targeted_gain_over_released_checkpoint: 0.475
+  targeted_regression_delta_from_released: 0.05
+  final_decision: Evidence-weighted dose-8 targeted data is the highest-value tested intervention on this boundary; retain it and broaden confirmation before generalizing.
+accounting:
+  campaign_su: 102.4888888889
+  cumulative_su: 255.3930544409
+  completed_jobs: [15240802.pbs101, 15240813.pbs101, 15240814.pbs101, 15240815.pbs101, 15240816.pbs101, 15240891.pbs101]
+  cancelled_before_start: [15240817.pbs101, 15240892.pbs101, 15240893.pbs101]

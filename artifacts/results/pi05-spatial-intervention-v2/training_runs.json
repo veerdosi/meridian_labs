@@ -1,0 +1,101 @@
+[
+  {
+    "arm": "targeted",
+    "artifacts": [],
+    "config": "meridian_pi05_libero",
+    "cost": {
+      "actual_walltime_seconds": 1280.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.35555555555555557,
+      "job_id": "15240814.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 1800,
+      "source": "nscc_pbs_finished_record",
+      "su": 22.7555555556
+    },
+    "created_at": "2026-08-23T18:50:00Z",
+    "dataset_repo_id": "meridian/pi05-spatial-intervention-v2_targeted",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v2",
+    "id": "train_pi05-spatial-intervention-v2_targeted",
+    "intervention_id": "pi05_spatial_targeted_v2",
+    "method": "LoRA",
+    "metrics": {
+      "conversion_seconds": 254.0,
+      "evaluation_seconds": 778.0,
+      "server_start_seconds": 15.0,
+      "training_seconds": 230.0
+    },
+    "output_checkpoint": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99",
+    "starting_checkpoint": "gs://openpi-assets/checkpoints/pi05_libero",
+    "steps": 100
+  },
+  {
+    "arm": "random",
+    "artifacts": [],
+    "config": "meridian_pi05_libero",
+    "cost": {
+      "actual_walltime_seconds": 1383.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.38416666666666666,
+      "job_id": "15240815.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 1800,
+      "source": "nscc_pbs_finished_record",
+      "su": 24.5866666667
+    },
+    "created_at": "2026-08-23T18:50:00Z",
+    "dataset_repo_id": "meridian/pi05-spatial-intervention-v2_random",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v2",
+    "id": "train_pi05-spatial-intervention-v2_random",
+    "intervention_id": "pi05_spatial_random_v2",
+    "method": "LoRA",
+    "metrics": {
+      "conversion_seconds": 266.0,
+      "evaluation_seconds": 847.0,
+      "server_start_seconds": 27.0,
+      "training_seconds": 240.0
+    },
+    "output_checkpoint": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-random/99",
+    "starting_checkpoint": "gs://openpi-assets/checkpoints/pi05_libero",
+    "steps": 100
+  },
+  {
+    "arm": "original_distribution",
+    "artifacts": [],
+    "config": "meridian_pi05_libero",
+    "cost": {
+      "actual_walltime_seconds": 1227.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.3408333333333333,
+      "job_id": "15240816.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 1800,
+      "source": "nscc_pbs_finished_record",
+      "su": 21.8133333333
+    },
+    "created_at": "2026-08-23T18:50:00Z",
+    "dataset_repo_id": "meridian/pi05-spatial-intervention-v2_original_distribution",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v2",
+    "id": "train_pi05-spatial-intervention-v2_original_distribution",
+    "intervention_id": "pi05_spatial_original_v2",
+    "method": "LoRA",
+    "metrics": {
+      "conversion_seconds": 22.0,
+      "evaluation_seconds": 1080.0,
+      "server_start_seconds": 20.0,
+      "training_seconds": 102.0
+    },
+    "output_checkpoint": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-original_distribution/99",
+    "starting_checkpoint": "gs://openpi-assets/checkpoints/pi05_libero",
+    "steps": 100
+  }
+]

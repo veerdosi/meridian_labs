@@ -1,0 +1,19 @@
+job_id: 15240816.pbs101
+purpose: dose8_original_distribution_train_and_evaluate
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 1800}
+actual: {walltime_seconds: 1227, gpu_hours: 0.3408333333, su_estimated: 21.8133333333, cpu_time_seconds: 1464, peak_host_memory_kb: 26195484}
+phases: {conversion_seconds: 22, training_seconds: 102, server_start_seconds: 20, evaluation_seconds: 1080}
+exit_status: 0
+arm: original_distribution
+dataset: {repo_id: meridian/pi05-spatial-intervention-v2_original_distribution, trajectories: 8, sampling: canonical_original_distribution}
+training: {config: meridian_pi05_libero, steps: 100, method: LoRA, starting_checkpoint: 'gs://openpi-assets/checkpoints/pi05_libero', checkpoint: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-original_distribution/99}
+result:
+  target: {successes: 8, trials: 40, success_rate: 0.2, wilson_95: [0.1049986497, 0.3475760738]}
+  regression: {successes: 18, trials: 20, success_rate: 0.9, delta_from_released: -0.05}
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/interventions/pi05-spatial-intervention-v2/original_distribution/15240816.pbs101
+  external_ssd_path: artifacts/nscc/interventions/pi05-spatial-intervention-v2/original_distribution/15240816.pbs101
+  bytes: 1719293273
+  evaluation_jsonl_sha256: 9096eb0ca05d17f58c7afc79ed17c12b6910f2cd7eb0f6c537c2cc1468a18ede

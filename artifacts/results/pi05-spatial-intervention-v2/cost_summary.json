@@ -1,0 +1,13 @@
+{
+  "accounting_basis": "finished PBS walltime at 64 SU per A100-hour; cancelled jobs never started",
+  "campaign_su": 102.4888888889,
+  "cancelled_jobs_su": 0.0,
+  "cumulative_su": 255.3930544409,
+  "data_generation_su": 5.5288888889,
+  "original_distribution_su": 21.8133333333,
+  "pre_campaign_su": 152.904165552,
+  "random_su": 24.5866666667,
+  "released_partial_su": 17.0844444444,
+  "released_repair_su": 10.72,
+  "targeted_su": 22.7555555556
+}

@@ -14,4 +14,5 @@ artifacts:
   cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-spatial-campaign-baseline-v2/15240813.pbs101
   external_ssd_path: artifacts/nscc/evaluations/pi05-spatial-campaign-baseline-v2/15240813.pbs101
   bytes: 845330722
+  external_copy_verified_by: rsync_size_only_dry_run
   rollout_jsonl_sha256: f322ff596d83148bd96a063bf876434480045b5f5d8dee17312f3f50f586d526

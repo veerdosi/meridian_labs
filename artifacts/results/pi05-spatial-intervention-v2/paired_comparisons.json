@@ -1,0 +1,26 @@
+{
+  "random_vs_none": {
+    "losses": 2,
+    "p": 0.0004024505615234375,
+    "ties": 20,
+    "wins": 18
+  },
+  "targeted_vs_none": {
+    "losses": 0,
+    "p": 3.814697265625e-06,
+    "ties": 21,
+    "wins": 19
+  },
+  "targeted_vs_original": {
+    "losses": 0,
+    "p": 4.656612873077393e-10,
+    "ties": 8,
+    "wins": 32
+  },
+  "targeted_vs_random": {
+    "losses": 0,
+    "p": 0.25,
+    "ties": 37,
+    "wins": 3
+  }
+}

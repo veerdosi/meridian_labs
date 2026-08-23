@@ -22,7 +22,7 @@ Targeted data changed target success versus no intervention by +35%, with lift v
 
 The preregistered targeted-selection hypothesis is falsified at this dose.
 
-On paired plans, targeted versus random had 1 wins and 4 losses (two-sided sign-test p=0.375); the point difference is not itself proof that random is superior.
+On paired plans, targeted versus random had 1 wins and 4 losses (two-sided sign-test p=0.375); this paired test quantifies uncertainty around the locked point-estimate decision.
 
 Decision engine: Do not collect more data; targeted data has not beaten all fair baselines.
 

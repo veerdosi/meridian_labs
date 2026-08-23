@@ -16,4 +16,5 @@ artifacts:
   cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/interventions/pi05-spatial-intervention-v2/targeted/15240814.pbs101
   external_ssd_path: artifacts/nscc/interventions/pi05-spatial-intervention-v2/targeted/15240814.pbs101
   bytes: 1122526676
+  external_copy_verified_by: rsync_size_only_dry_run
   evaluation_jsonl_sha256: 55109de3f34685a84ed96968e41cfd9d94539f01ac7cc7e49a07fd740d9d4008

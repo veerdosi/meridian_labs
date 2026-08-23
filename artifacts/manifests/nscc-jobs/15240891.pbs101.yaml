@@ -13,4 +13,5 @@ artifacts:
   cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-spatial-campaign-baseline-v2-regression-repair/15240891.pbs101
   external_ssd_path: artifacts/nscc/evaluations/pi05-spatial-campaign-baseline-v2-regression-repair/15240891.pbs101
   bytes: 540758127
+  external_copy_verified_by: rsync_size_only_dry_run
   rollout_jsonl_sha256: a46584bceed70281febbe6acdf15f5120df425434045b693330674352aeab13e

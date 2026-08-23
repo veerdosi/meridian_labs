@@ -41,6 +41,14 @@ uv run python scripts/record_real_campaign.py \
 
 The campaign used 80.14 SU; cumulative measured build and research usage was 152.90 SU.
 
+The sequential dose-8 follow-up is recorded in
+[`artifacts/results/pi05-spatial-intervention-v2/RESULT.md`](artifacts/results/pi05-spatial-intervention-v2/RESULT.md).
+An evidence-weighted 6-target/2-broad mixture reached 40/40 target success and 20/20 regression,
+versus 37/40 for matched random data, 8/40 for original-distribution data, and 21/40 for the
+released checkpoint. The locked targeted-versus-random gate was positive, although its paired
+sign test remains non-decisive (3 wins, 0 losses, p=0.25); targeted versus original was decisive
+(32 wins, 0 losses). Campaign v2 used 102.49 SU and brought cumulative measured usage to 255.39 SU.
+
 ## NSCC
 
 Cluster jobs and accounting helpers are under `scripts/nscc/`; infrastructure and cost conventions

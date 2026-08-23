@@ -238,6 +238,8 @@ def main() -> None:
             else "Refine the intervention-value model; do not scale this targeted strategy."
         ),
     )
+    if hypothesis_supported and decision.next_dose is None:
+        next_action = report_context.get("next_action_on_supported_stop", next_action)
     lines = [
         "# π0.5 / LIBERO intervention result",
         "",
@@ -311,8 +313,8 @@ def main() -> None:
                 f"On paired plans, targeted versus random had "
                 f"{paired['targeted_vs_random']['wins']} wins and "
                 f"{paired['targeted_vs_random']['losses']} losses "
-                f"(two-sided sign-test p={paired['targeted_vs_random']['p']:.3f}); the point "
-                "difference is not itself proof that random is superior."
+                f"(two-sided sign-test p={paired['targeted_vs_random']['p']:.3f}); this paired "
+                "test quantifies uncertainty around the locked point-estimate decision."
             ),
             "",
             f"Decision engine: {decision.recommendation}",
