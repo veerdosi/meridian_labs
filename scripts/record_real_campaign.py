@@ -12,6 +12,7 @@ from pathlib import Path
 
 import yaml
 
+from meridian.accounting import resource_cost_from_manifests
 from meridian.decision import decide_intervention
 from meridian.models import (
     ArtifactRef,
@@ -20,28 +21,10 @@ from meridian.models import (
     ExperimentSpec,
     InterventionArm,
     InterventionSpec,
-    ResourceCost,
     TrainingRun,
 )
 from meridian.search import _wilson
 from meridian.store import ExperimentStore
-
-
-def resource_cost(manifest: dict) -> ResourceCost:
-    actual = manifest["actual"]
-    requested = manifest["requested"]
-    walltime = float(actual["walltime_seconds"])
-    return ResourceCost(
-        job_id=str(manifest["job_id"]),
-        queue=str(manifest["queue"]),
-        requested_ncpus=int(requested["ncpus"]),
-        requested_ngpus=int(requested["ngpus"]),
-        requested_walltime_seconds=int(requested["walltime_seconds"]),
-        actual_walltime_seconds=walltime,
-        gpu_hours=walltime / 3600,
-        su=float(actual["su_estimated"]),
-        source="nscc_pbs_finished_record",
-    )
 
 
 def paired_sign_test(candidate: dict[str, bool], reference: dict[str, bool]) -> dict:
@@ -83,7 +66,14 @@ def main() -> None:
     for arm_name, item in run_spec["runs"].items():
         arm = InterventionArm(arm_name)
         intervention = interventions[arm]
-        rows = [json.loads(line) for line in Path(item["rollouts"]).read_text().splitlines() if line]
+        rollout_values = item["rollouts"]
+        rollout_paths = rollout_values if isinstance(rollout_values, list) else [rollout_values]
+        rows = [
+            json.loads(line)
+            for path in rollout_paths
+            for line in Path(path).read_text().splitlines()
+            if line
+        ]
         target = [row for row in rows if row["parameters"].get("evaluation_suite") == "target"]
         regression = [row for row in rows if row not in target]
         target_successes = sum(row["success"] for row in target)
@@ -95,7 +85,11 @@ def main() -> None:
         per_seed = defaultdict(list)
         for row in target:
             per_seed[int(row["parameters"]["evaluation_seed"])].append(float(row["success"]))
-        manifest = yaml.safe_load(Path(item["job_manifest"]).read_text())
+        manifest_values = (
+            item["job_manifests"] if "job_manifests" in item else [item["job_manifest"]]
+        )
+        manifests = [yaml.safe_load(Path(path).read_text()) for path in manifest_values]
+        manifest = manifests[0]
         evaluations.append(
             EvaluationResult(
                 experiment_id=spec.id,
@@ -112,7 +106,7 @@ def main() -> None:
                 regression_success_rate=regression_rate,
                 regression_delta=0.0,
                 seed_results={seed: sum(values) / len(values) for seed, values in per_seed.items()},
-                cost=resource_cost(manifest),
+                cost=resource_cost_from_manifests(manifests),
                 created_at=recorded_at,
             )
         )
@@ -150,7 +144,7 @@ def main() -> None:
                 method=manifest["training"]["method"],
                 steps=int(manifest["training"]["steps"]),
                 metrics={key: float(value) for key, value in phases.items()},
-                cost=resource_cost(manifest),
+                cost=resource_cost_from_manifests([manifest]),
                 created_at=recorded_at,
             )
         )

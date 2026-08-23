@@ -1,0 +1,19 @@
+job_id: 15240814.pbs101
+purpose: dose8_evidence_weighted_targeted_train_and_evaluate
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 1800}
+actual: {walltime_seconds: 1280, gpu_hours: 0.3555555556, su_estimated: 22.7555555556, cpu_time_seconds: 1223, peak_host_memory_kb: 28978060}
+phases: {conversion_seconds: 254, training_seconds: 230, server_start_seconds: 15, evaluation_seconds: 778}
+exit_status: 0
+arm: targeted
+dataset: {repo_id: meridian/pi05-spatial-intervention-v2_targeted, trajectories: 8, sampling: evidence_weighted_6_target_2_broad}
+training: {config: meridian_pi05_libero, steps: 100, method: LoRA, starting_checkpoint: 'gs://openpi-assets/checkpoints/pi05_libero', checkpoint: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99}
+result:
+  target: {successes: 40, trials: 40, success_rate: 1.0, wilson_95: [0.9123754607, 1.0]}
+  regression: {successes: 20, trials: 20, success_rate: 1.0, delta_from_released: 0.05}
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/interventions/pi05-spatial-intervention-v2/targeted/15240814.pbs101
+  external_ssd_path: artifacts/nscc/interventions/pi05-spatial-intervention-v2/targeted/15240814.pbs101
+  bytes: 1122526676
+  evaluation_jsonl_sha256: 55109de3f34685a84ed96968e41cfd9d94539f01ac7cc7e49a07fd740d9d4008
