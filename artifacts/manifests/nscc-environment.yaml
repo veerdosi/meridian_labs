@@ -1,0 +1,29 @@
+captured_at: 2026-08-23T21:30:00+08:00
+host: asp2a-login-ntu02
+scheduler: pbs_pro
+storage:
+  home:
+    path: /home/users/ntu/veer001
+    quota: 50GB
+  scratch:
+    path: /scratch/users/ntu/veer001
+    quota: 100TB
+    durability: purgeable
+queues:
+  gdev:
+    gpu_range: [1, 4]
+    max_walltime: "02:00:00"
+  g1:
+    gpu_count: 1
+    walltime_range: ["02:00:01", "24:00:00"]
+node_sample:
+  cpu_cores: 128
+  memory_gb: 440
+modules:
+  cuda: ["11.8.0", "12.2.2", "12.8.1"]
+  python: ["3.11.7-gcc11", "3.12.1-gcc11"]
+  apptainer: ["1.2.2", "1.5.0"]
+audit_su: 0
+notes:
+  - Read-only login-node audit; no scheduler job launched.
+  - Actual job resource and SU accounting is recorded separately per PBS job.

@@ -1,0 +1,17 @@
+policy_adapter: boundary_surrogate
+checkpoint_id: surrogate-v1
+checkpoint_source: generated:test-only
+task_suite: hidden-boundary-smoke
+regression_suites: [central-distribution]
+evaluation_seeds: [101, 102, 103, 104]
+max_regression: 0.02
+budget:
+  max_rollouts: 72
+  max_training_variants: 5
+  max_gpu_hours: 1.0
+parameter_space:
+  axes:
+    - {name: camera_yaw, low: -1.0, high: 1.0, semantic: viewpoint}
+    - {name: occlusion, low: 0.0, high: 1.0, semantic: visual_occlusion}
+    - {name: object_x, low: -1.0, high: 1.0, semantic: object_pose}
+
