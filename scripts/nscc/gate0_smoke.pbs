@@ -20,6 +20,7 @@ export MUJOCO_GL=egl
 export MUJOCO_EGL_DEVICE_ID=0
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.85
+export PYTHONUNBUFFERED=1
 
 mkdir -p "$RUN_ROOT" "$ROOT/jobs/logs"
 module load python/3.11.7-gcc11 cuda/12.2.2
@@ -59,4 +60,3 @@ PY
 printf 'openpi_revision=15a9616a00943ada6c20a0f158e3adb39df2ccac\n' > "$RUN_ROOT/revisions.txt"
 printf 'libero_revision=f78abd68ee283de9f9be3c8f7e2a9ad60246e95c\n' >> "$RUN_ROOT/revisions.txt"
 find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
-
