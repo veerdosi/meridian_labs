@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -42,6 +43,15 @@ def resource_cost(manifest: dict) -> ResourceCost:
     )
 
 
+def paired_sign_test(candidate: dict[str, bool], reference: dict[str, bool]) -> dict:
+    wins = sum(candidate[key] and not reference[key] for key in reference)
+    losses = sum(reference[key] and not candidate[key] for key in reference)
+    discordant = wins + losses
+    tail = sum(math.comb(discordant, index) for index in range(min(wins, losses) + 1))
+    p_value = min(1.0, 2 * tail / (2**discordant)) if discordant else 1.0
+    return {"wins": wins, "losses": losses, "ties": len(reference) - discordant, "p": p_value}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=Path, required=True)
@@ -59,6 +69,7 @@ def main() -> None:
     evaluations = []
     training_runs = []
     datasets = []
+    target_outcomes = {}
     args.output.mkdir(parents=True, exist_ok=True)
 
     for arm_name, item in run_spec["runs"].items():
@@ -68,6 +79,7 @@ def main() -> None:
         target = [row for row in rows if row["parameters"].get("evaluation_suite") == "target"]
         regression = [row for row in rows if row not in target]
         target_successes = sum(row["success"] for row in target)
+        target_outcomes[arm] = {row["id"]: bool(row["success"]) for row in target}
         regression_rate = sum(row["success"] for row in regression) / len(regression)
         if arm == InterventionArm.NONE:
             baseline_regression = regression_rate
@@ -153,6 +165,23 @@ def main() -> None:
     (args.output / "decision.json").write_text(
         json.dumps(decision.model_dump(mode="json"), indent=2, sort_keys=True)
     )
+    paired = {
+        "targeted_vs_none": paired_sign_test(
+            target_outcomes[InterventionArm.TARGETED], target_outcomes[InterventionArm.NONE]
+        ),
+        "targeted_vs_random": paired_sign_test(
+            target_outcomes[InterventionArm.TARGETED], target_outcomes[InterventionArm.RANDOM]
+        ),
+        "targeted_vs_original": paired_sign_test(
+            target_outcomes[InterventionArm.TARGETED], target_outcomes[InterventionArm.ORIGINAL]
+        ),
+        "random_vs_none": paired_sign_test(
+            target_outcomes[InterventionArm.RANDOM], target_outcomes[InterventionArm.NONE]
+        ),
+    }
+    (args.output / "paired_comparisons.json").write_text(
+        json.dumps(paired, indent=2, sort_keys=True)
+    )
 
     ranked = sorted(evaluations, key=lambda item: item.target_success_rate, reverse=True)
     targeted = next(item for item in evaluations if item.arm == InterventionArm.TARGETED)
@@ -200,6 +229,14 @@ def main() -> None:
                 "The targeted-selection hypothesis is therefore falsified at this dose. The "
                 "operationally best tested checkpoint is the highest-ranked arm, while the "
                 "scientific decision is not to scale the narrow targeted intervention."
+            ),
+            "",
+            (
+                f"On paired plans, targeted versus random had "
+                f"{paired['targeted_vs_random']['wins']} wins and "
+                f"{paired['targeted_vs_random']['losses']} losses "
+                f"(two-sided sign-test p={paired['targeted_vs_random']['p']:.3f}); the point "
+                "difference is not itself proof that random is superior."
             ),
             "",
             f"Decision engine: {decision.recommendation}",
