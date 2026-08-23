@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replay a successful LIBERO action trace under targeted visual parameters."""
+"""Replay successful LIBERO action traces under targeted visual parameters."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def replay(base: dict, actions: np.ndarray, plan: dict, output: Path) -> dict:
             "parameters": {
                 key: value
                 for key, value in plan.items()
-                if key not in {"id", "task_suite", "task_id", "seed"}
+                if key not in {"id", "task_suite", "task_id", "seed", "source_rollout_id"}
             },
             "success": bool(done),
             "score": float(done),
@@ -104,18 +104,25 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     base_records = [json.loads(line) for line in args.base_rollout.read_text().splitlines() if line]
-    if len(base_records) != 1 or not base_records[0]["success"]:
-        raise ValueError(
-            "visual intervention replay requires exactly one successful source rollout"
-        )
-    base = base_records[0]
-    source = np.load(base["trace"])
+    if not base_records or any(not record["success"] for record in base_records):
+        raise ValueError("visual intervention replay requires successful source rollouts")
+    sources = {record["id"]: record for record in base_records}
     plans = [json.loads(line) for line in args.plans.read_text().splitlines() if line]
     args.output.mkdir(parents=True, exist_ok=True)
     output_path = args.output / "rollouts.jsonl"
     with output_path.open("w") as stream:
-        for plan in plans:
-            record = replay(base, source["actions"], plan, args.output)
+        for index, plan in enumerate(plans):
+            source_id = plan.get("source_rollout_id")
+            if source_id is None:
+                base = base_records[index % len(base_records)]
+            else:
+                try:
+                    base = sources[source_id]
+                except KeyError as error:
+                    raise ValueError(f"unknown source_rollout_id: {source_id}") from error
+            with np.load(base["trace"]) as source:
+                actions = np.array(source["actions"], copy=True)
+            record = replay(base, actions, plan, args.output)
             stream.write(json.dumps(record, sort_keys=True) + "\n")
             stream.flush()
             print(json.dumps(record, sort_keys=True))
