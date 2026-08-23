@@ -2,7 +2,10 @@ from pathlib import Path
 
 from meridian.semantic_discovery import (
     build_discovery_plans,
+    build_semantic_validation_plans,
     inventory_tasks,
+    nominate_validation_candidates,
+    rank_validated_boundaries,
     score_inventory,
     select_discovery_and_reserve,
 )
@@ -63,3 +66,63 @@ def test_semantic_inventory_and_split_are_deterministic_and_disjoint(tmp_path: P
     for index in range(0, len(plans), 2):
         assert plans[index]["seed"] == plans[index + 1]["seed"]
         assert plans[index]["init_state_index"] == plans[index + 1]["init_state_index"]
+
+
+def test_semantic_boundary_requires_repeated_canonical_control_failure() -> None:
+    candidate = {
+        "task_suite": "libero_90", "task_id": 3,
+        "semantic_capability": "articulated_sequence", "discovery_prior_score": 0.8,
+    }
+    config = {
+        "discovery_screen": {
+            "canonical": {"camera_x": 0.0, "camera_yaw_deg": 0.0, "brightness": 1.0,
+                          "occlusion": 0.0, "visual_distractors": 0.0,
+                          "replan_steps": 5.0, "action_noise": 0.0},
+            "compound_view_visual": {"camera_x": 0.1, "camera_yaw_deg": 35.0,
+                                     "brightness": 1.0, "occlusion": 0.22,
+                                     "visual_distractors": 4.0,
+                                     "replan_steps": 5.0, "action_noise": 0.0},
+        },
+        "validation_gate": {
+            "candidates": 6, "repeats": 5, "initial_state_offsets": [0, 11, 23, 37, 49],
+            "seed_base": 61000,
+            "required_conditions": ["canonical", "compound_view_visual_canonical_control",
+                                    "viewpoint_only", "visual_only"],
+            "minimum_canonical_success_rate": 0.6, "minimum_stress_failure_rate": 0.4,
+            "minimum_intervention_headroom": 0.2,
+            "canonical_control": {"replan_steps": 5.0, "action_noise": 0.0},
+            "low_random_coverage_prior": 0.95,
+            "score_weights": {"repeatability": 0.3, "intervention_headroom": 0.25,
+                              "canonical_control_persistence": 0.2,
+                              "coverage_specificity": 0.15, "low_random_coverage": 0.1},
+        },
+    }
+    screen = [
+        {"task_suite": "libero_90", "task_id": 3, "success": True,
+         "parameters": {"stress_profile": "canonical"}},
+        {"task_suite": "libero_90", "task_id": 3, "success": False,
+         "parameters": {"stress_profile": "compound_view_visual"}},
+    ]
+    nominees = nominate_validation_candidates(screen, [candidate], config)
+    assert len(nominees) == 1
+    plans = build_semantic_validation_plans(nominees, config)
+    assert len(plans) == 20
+    results = []
+    for plan in plans:
+        condition = plan["validation_condition"]
+        repeat = plan["seed"] % 100
+        success = condition != "compound_view_visual_canonical_control" or repeat >= 3
+        if condition in {"viewpoint_only", "visual_only"}:
+            success = True
+        results.append({
+            "task_suite": plan["task_suite"], "task_id": plan["task_id"],
+            "success": success,
+            "parameters": {"validation_condition": condition,
+                           "replan_steps": plan["replan_steps"],
+                           "action_noise": plan["action_noise"]},
+        })
+    ranked = rank_validated_boundaries(results, nominees, config)
+    assert ranked[0]["eligible"]
+    assert ranked[0]["stress_failure_rate"] == 0.6
+    assert ranked[0]["canonical_control_failure_rate"] == 0.6
+    assert ranked[0]["coverage_specificity"] == 0.6

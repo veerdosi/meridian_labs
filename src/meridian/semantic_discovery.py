@@ -239,3 +239,167 @@ def build_discovery_plans(discovery: list[dict], config: dict) -> list[dict]:
                 }
             )
     return plans
+
+
+def nominate_validation_candidates(
+    results: list[dict], discovery: list[dict], config: dict
+) -> list[dict]:
+    outcomes = {}
+    for result in results:
+        profile = result.get("stress_profile") or result.get("parameters", {}).get(
+            "stress_profile"
+        )
+        outcomes[(str(result["task_suite"]), int(result["task_id"]), str(profile))] = bool(
+            result["success"]
+        )
+    nominees = []
+    for task in discovery:
+        key = (task["task_suite"], int(task["task_id"]))
+        if outcomes.get((*key, "canonical")) is True and outcomes.get(
+            (*key, "compound_view_visual")
+        ) is False:
+            nominees.append({**task, "candidate_profile": "compound_view_visual"})
+    nominees.sort(
+        key=lambda row: (-row["discovery_prior_score"], row["task_suite"], row["task_id"])
+    )
+    limit = int(config["validation_gate"]["candidates"])
+    chosen, capability_counts = [], Counter()
+    for nominee in nominees:
+        capability = nominee["semantic_capability"]
+        if capability_counts[capability] < 2:
+            chosen.append(nominee)
+            capability_counts[capability] += 1
+            if len(chosen) == limit:
+                return chosen
+    keys = {(row["task_suite"], row["task_id"]) for row in chosen}
+    for nominee in nominees:
+        if (nominee["task_suite"], nominee["task_id"]) not in keys:
+            chosen.append(nominee)
+            if len(chosen) == limit:
+                break
+    return chosen
+
+
+def build_semantic_validation_plans(candidates: list[dict], config: dict) -> list[dict]:
+    screen = config["discovery_screen"]
+    gate = config["validation_gate"]
+    conditions = {
+        "canonical": screen["canonical"],
+        "compound_view_visual_canonical_control": screen["compound_view_visual"],
+        "viewpoint_only": {
+            **screen["canonical"],
+            "camera_x": screen["compound_view_visual"]["camera_x"],
+            "camera_yaw_deg": screen["compound_view_visual"]["camera_yaw_deg"],
+        },
+        "visual_only": {
+            **screen["canonical"],
+            "brightness": screen["compound_view_visual"]["brightness"],
+            "occlusion": screen["compound_view_visual"]["occlusion"],
+            "visual_distractors": screen["compound_view_visual"]["visual_distractors"],
+        },
+    }
+    plans = []
+    for candidate_index, candidate in enumerate(candidates):
+        base_init = int(candidate["task_id"]) * 7
+        for repeat, offset in enumerate(gate["initial_state_offsets"]):
+            seed = int(gate["seed_base"]) + candidate_index * 100 + repeat
+            for condition in gate["required_conditions"]:
+                plans.append(
+                    {
+                        "id": f"semantic-validation-{candidate['task_suite']}-task{candidate['task_id']}-{condition}-repeat{repeat}",
+                        "task_suite": candidate["task_suite"],
+                        "task_id": int(candidate["task_id"]),
+                        "seed": seed,
+                        "init_state_index": float((base_init + int(offset)) % 50),
+                        "search_stage": "semantic_validation",
+                        "validation_condition": condition,
+                        "candidate_profile": "compound_view_visual",
+                        **conditions[condition],
+                    }
+                )
+    return plans
+
+
+def rank_validated_boundaries(
+    results: list[dict], candidates: list[dict], config: dict
+) -> list[dict]:
+    grouped: dict[tuple[str, int], dict[str, list[dict]]] = {}
+    for result in results:
+        key = (str(result["task_suite"]), int(result["task_id"]))
+        condition = result.get("validation_condition") or result.get("parameters", {}).get(
+            "validation_condition"
+        )
+        grouped.setdefault(key, {}).setdefault(str(condition), []).append(result)
+
+    def rate(rows: list[dict]) -> float:
+        return sum(bool(row["success"]) for row in rows) / len(rows) if rows else 0.0
+
+    gate = config["validation_gate"]
+    weights = gate["score_weights"]
+    ranking = []
+    for candidate in candidates:
+        conditions = grouped.get((candidate["task_suite"], int(candidate["task_id"])), {})
+        canonical = conditions.get("canonical", [])
+        compound = conditions.get("compound_view_visual_canonical_control", [])
+        viewpoint = conditions.get("viewpoint_only", [])
+        visual = conditions.get("visual_only", [])
+        canonical_rate = rate(canonical)
+        compound_success = rate(compound)
+        repeatability = 1.0 - compound_success
+        headroom = max(0.0, canonical_rate - compound_success)
+        canonical_control_rows = [
+            row
+            for row in compound
+            if float(row.get("parameters", {}).get("replan_steps", 5.0))
+            == float(gate["canonical_control"]["replan_steps"])
+            and float(row.get("parameters", {}).get("action_noise", 0.0))
+            == float(gate["canonical_control"]["action_noise"])
+        ]
+        control_persistence = 1.0 - rate(canonical_control_rows)
+        specificity = max(
+            0.0,
+            repeatability - max(1.0 - rate(viewpoint), 1.0 - rate(visual)),
+        )
+        complete = all(
+            len(rows) >= int(gate["repeats"])
+            for rows in (canonical, compound, viewpoint, visual, canonical_control_rows)
+        )
+        eligible = (
+            complete
+            and canonical_rate >= float(gate["minimum_canonical_success_rate"])
+            and repeatability >= float(gate["minimum_stress_failure_rate"])
+            and headroom >= float(gate["minimum_intervention_headroom"])
+        )
+        weighted = (
+            float(weights["repeatability"]) * repeatability
+            + float(weights["intervention_headroom"]) * headroom
+            + float(weights["canonical_control_persistence"]) * control_persistence
+            + float(weights["coverage_specificity"]) * specificity
+            + float(weights["low_random_coverage"])
+            * float(gate["low_random_coverage_prior"])
+        )
+        ranking.append(
+            {
+                **candidate,
+                "validation_complete": complete,
+                "eligible": eligible,
+                "canonical_success_rate": canonical_rate,
+                "stress_failure_rate": repeatability,
+                "intervention_headroom": headroom,
+                "canonical_control_failure_rate": control_persistence,
+                "coverage_specificity": specificity,
+                "weighted_score": weighted,
+            }
+        )
+    return sorted(
+        ranking,
+        key=lambda row: (
+            not row["eligible"],
+            -row["weighted_score"],
+            -row["intervention_headroom"],
+            -row["coverage_specificity"],
+            -row["discovery_prior_score"],
+            row["task_suite"],
+            row["task_id"],
+        ),
+    )

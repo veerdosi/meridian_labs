@@ -25,7 +25,7 @@ benchmark_prior:
 locked_selection:
   implementation: src/meridian/semantic_discovery.py
   config: configs/pi05_libero_semantic_discovery.yaml
-  config_sha256: 926f5af7396e2c696401baa50b6961a115a277e8c6f2cafd81722f5909a5a589
+  config_sha256: 29156ec0026c98feb8b601b699f9f15b0cd9c88269e7bd8419fdce3c649c6d7b
   method: Weighted interaction complexity, semantic rarity, suite benchmark failure prior, and unreported-suite uncertainty followed by deterministic categorical farthest-first diversity within locked suite quotas.
   tie_breaker: higher greedy score, higher prior score, lexicographically smaller suite, smaller task id
   discovery_tasks: 28
@@ -49,11 +49,16 @@ discovery_screen:
   maximum_reserved_su_at_64_su_per_gpu_hour: 64
   planning_guidance_su: 60
 validation_gate:
+  nomination: Canonical success plus compound failure; higher locked discovery prior with at most two candidates per semantic capability before global fill.
+  candidates: 6
   repeats: 5
   required_conditions: [canonical, compound_view_visual_canonical_control, viewpoint_only, visual_only]
   minimum_canonical_success_rate: 0.60
   minimum_stress_failure_rate: 0.40
   minimum_intervention_headroom: 0.20
+  weighted_selection: {repeatability: 0.30, intervention_headroom: 0.25, canonical_control_persistence: 0.20, coverage_specificity: 0.15, low_random_coverage: 0.10}
+  selection_tie_breaker: [higher_weighted_score, higher_intervention_headroom, higher_coverage_specificity, higher_discovery_prior_score, lexicographically_smaller_suite, smaller_task_id]
+  implementation: [scripts/plan_semantic_libero_validation.py, scripts/score_semantic_libero_validation.py]
   training_prohibited_before_gate: true
 jobs:
   semantic_discovery:
