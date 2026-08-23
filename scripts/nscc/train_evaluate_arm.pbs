@@ -1,0 +1,110 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=04:00:00
+#PBS -N meridian-train-arm
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${DATASET_JSONL:?absolute cluster path to successful intervention rollouts}"
+: "${ARM:?targeted, random, original_distribution, or oracle_targeted}"
+: "${RUN_ID:?unique intervention campaign id}"
+: "${EVAL_PLANS:?absolute cluster path to target and regression plans}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+OPENPI_ROOT="$ROOT/src/openpi"
+RUN_ROOT="$ROOT/artifacts/interventions/$RUN_ID/$ARM/$PBS_JOBID"
+DATASET_REPO="meridian/${RUN_ID}_${ARM}"
+EXP_NAME="$RUN_ID-$ARM"
+TRAIN_STEPS=${TRAIN_STEPS:-100}
+POLICY_PORT=${POLICY_PORT:-8001}
+export OPENPI_DATA_HOME="$ROOT/cache/openpi"
+export UV_CACHE_DIR="$ROOT/cache/uv"
+export HF_LEROBOT_HOME="$ROOT/datasets/lerobot"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.9
+export PYTHONUNBUFFERED=1
+export MERIDIAN_DATASET_REPO="$DATASET_REPO"
+export MERIDIAN_BATCH_SIZE=${MERIDIAN_BATCH_SIZE:-2}
+export MERIDIAN_TRAIN_STEPS="$TRAIN_STEPS"
+export MERIDIAN_WARMUP_STEPS=${MERIDIAN_WARMUP_STEPS:-10}
+export MERIDIAN_DECAY_STEPS="$TRAIN_STEPS"
+export MERIDIAN_SAVE_INTERVAL="$TRAIN_STEPS"
+export MERIDIAN_CHECKPOINT_ROOT="$ROOT/checkpoints"
+
+mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME" "$MERIDIAN_CHECKPOINT_ROOT"
+module load python/3.11.7-gcc11 cuda/12.2.2
+nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw \
+  --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
+MONITOR_PID=$!
+SERVER_PID=
+cleanup() {
+  if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi
+  kill "$MONITOR_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+phase_start=$(date +%s)
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_meridian_to_lerobot.py" \
+  --rollouts "$DATASET_JSONL" \
+  --repo-id "$DATASET_REPO" \
+  --output-root "$HF_LEROBOT_HOME" | tee "$RUN_ROOT/conversion.json"
+conversion_end=$(date +%s)
+
+cd "$OPENPI_ROOT"
+"$ROOT/envs/openpi/bin/python" scripts/train.py meridian_pi05_libero \
+  --exp-name "$EXP_NAME" --overwrite | tee "$RUN_ROOT/training.log"
+training_end=$(date +%s)
+
+CHECKPOINT_ROOT="$MERIDIAN_CHECKPOINT_ROOT/meridian_pi05_libero/$EXP_NAME"
+CHECKPOINT=$(find "$CHECKPOINT_ROOT" -mindepth 1 -maxdepth 1 -type d \
+  | sort -V | tail -n 1)
+: "${CHECKPOINT:?training produced no checkpoint under $CHECKPOINT_ROOT}"
+test -d "$CHECKPOINT/params"
+"$ROOT/envs/openpi/bin/python" scripts/serve_policy.py \
+  --port "$POLICY_PORT" \
+  policy:checkpoint \
+  --policy.config meridian_pi05_libero \
+  --policy.dir "$CHECKPOINT" > "$RUN_ROOT/server.log" 2>&1 &
+SERVER_PID=$!
+timeout 300 "$ROOT/envs/openpi/bin/python" - <<PY \
+  > "$RUN_ROOT/readiness.log" 2>&1
+from openpi_client.websocket_client_policy import WebsocketClientPolicy
+client = WebsocketClientPolicy("127.0.0.1", $POLICY_PORT)
+print(client.get_server_metadata())
+PY
+server_ready=$(date +%s)
+
+module unload python/3.11.7-gcc11
+module load python/3.8.13
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
+export MUJOCO_GL=egl
+ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES%%,*}"
+if [[ "$ALLOCATED_GPU" =~ ^[0-9]+$ ]]; then
+  EGL_DEVICE_INDEX="$ALLOCATED_GPU"
+else
+  EGL_DEVICE_INDEX=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader \
+    | awk -F ', ' -v uuid="$ALLOCATED_GPU" '$2 == uuid { print $1; exit }')
+fi
+: "${EGL_DEVICE_INDEX:?could not map allocated GPU $ALLOCATED_GPU to EGL index}"
+export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
+export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
+  --host 127.0.0.1 --port "$POLICY_PORT" \
+  --plans "$EVAL_PLANS" \
+  --output "$RUN_ROOT/evaluation" \
+  > >(tee "$RUN_ROOT/evaluation.log") 2>&1
+evaluation_end=$(date +%s)
+
+printf '{"conversion_seconds":%d,"training_seconds":%d,"server_start_seconds":%d,"evaluation_seconds":%d}\n' \
+  "$((conversion_end-phase_start))" \
+  "$((training_end-conversion_end))" \
+  "$((server_ready-training_end))" \
+  "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
+printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\n' \
+  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" \
+  > "$RUN_ROOT/inputs.txt"
+find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
