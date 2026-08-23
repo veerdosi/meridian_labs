@@ -1,0 +1,22 @@
+job_id: 15239806.pbs101
+purpose: pi05_libero_spatial_interaction_search_attempt_1
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 7200}
+actual:
+  walltime_seconds: 281
+  gpu_hours: 0.0780555556
+  su_estimated: 4.9955555584
+  peak_host_memory_kb: 13739260
+exit_status: 1
+result: failed_before_rollouts
+failure:
+  class: egl_device_binding
+  detail: hardcoded MUJOCO_EGL_DEVICE_ID=0 was not in the node CUDA_VISIBLE_DEVICES allocation
+  research_rollouts: 0
+remediation:
+  source_commit: 2f266f2
+  change: derive MUJOCO_EGL_DEVICE_ID from CUDA_VISIBLE_DEVICES
+  replacement_job_id: 15239829.pbs101
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-spatial-interactions-v1/15239806.pbs101
