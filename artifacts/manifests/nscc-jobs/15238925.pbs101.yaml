@@ -1,0 +1,20 @@
+job_id: 15238925.pbs101
+purpose: openpi_environment_bootstrap_and_gpu_validation
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 3600}
+actual:
+  walltime_seconds: 645
+  gpu_hours: 0.1791666667
+  su_estimated: 11.4666666688
+exit_status: 0
+result: passed
+runtime:
+  gpu: NVIDIA A100-SXM4-40GB
+  jax: 0.5.3
+  jax_device: CudaDevice(id=0)
+  torch: 2.7.1+cu126
+  torch_cuda: true
+revisions:
+  openpi: 15a9616a00943ada6c20a0f158e3adb39df2ccac
+  lerobot: 0cf864870cf29f4738d3ade893e6fd13fbd7cdb5
