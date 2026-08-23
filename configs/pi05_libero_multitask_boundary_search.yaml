@@ -84,6 +84,6 @@ selection_rule:
     - lexicographically smaller candidate profile
 cost_envelope:
   screen_expected_su_range: [25, 60]
-  screen_hard_cap_su: 60
-  cap_enforcement: Do not start another queued screen allocation when completed plus running actual/projected SU would reach the cap; never kill a running job.
+  screen_initial_guidance_su: 60
+  cap_enforcement: The 60 SU value is planning guidance, not a hard ceiling; prioritize completing the locked screen and record actual SU without killing a running job.
   validation_expected_su_range: [25, 65]

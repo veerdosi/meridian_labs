@@ -1,5 +1,5 @@
 campaign_id: pi05-multitask-boundary-screen-v1
-status: capped_screen_queued
+status: combined_screen_queued
 locked_at: 2026-08-23T19:15:45Z
 activation: user_directed_harder_task_confirmation
 scientific_context: The Spatial v2 gate was positive by its locked point rule, but targeted versus random was not statistically decisive and targeted reached a ceiling.
@@ -31,7 +31,9 @@ pbs_state_at_lock:
   checked_at: 2026-08-23T19:15:45Z
 cost_envelope:
   screen_expected_su: [25, 60]
-  validation_expected_su: [15, 35]
+  screen_guidance_only: true
+  clarification_at: 2026-08-23T19:24:47Z
+  validation_expected_su: [25, 65]
   accounting_rule: Record actual PBS walltime and charged resources for successes, failures, and cancellations.
 jobs:
   libero_spatial:
@@ -65,8 +67,8 @@ jobs:
   combined_replacement:
     job_id: 15240965.pbs101
     state: queued_at_submission
-    requested_walltime: 00:55:00
-    maximum_su_at_64_su_per_gpu_hour: 58.6666666667
+    requested_walltime: 02:00:00
+    walltime_revision_reason: User clarified that 60 SU is guidance rather than a hard ceiling; allow all 160 locked trials to finish.
     plan: all.jsonl
     plan_sha256: 5ed4ab218e05c99f4ce3fc76a0858ee2d08ba5820bc8bb08ed2099e708501db7
     plan_order: round-robin across the four suites so any walltime truncation cannot systematically omit a suite
