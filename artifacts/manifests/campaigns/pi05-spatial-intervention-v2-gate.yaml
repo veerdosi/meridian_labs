@@ -1,0 +1,67 @@
+campaign_id: pi05-spatial-intervention-v2
+status: active
+locked_at: 2026-08-23T18:15:44Z
+locked_before_targeted_or_random_outcomes: true
+fixed_evaluation_plan:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/plans/pi05-spatial-campaign-evaluation-v2.jsonl
+  target_trials: 40
+  regression_trials: 20
+  paired_across_arms: true
+  regression_limit: 0.02
+jobs:
+  released_checkpoint:
+    job_id: 15240813.pbs101
+    state_at_lock: running
+    action: allow_to_complete
+  targeted_dose_8:
+    job_id: 15240814.pbs101
+    state_at_lock: running
+    action: allow_to_complete
+  random_dose_8:
+    job_id: 15240815.pbs101
+    state_at_lock: queued
+    action: allow_to_complete
+  original_distribution_dose_8:
+    job_id: 15240816.pbs101
+    state_at_lock: queued
+    action: user_hold
+    hold_applied_at: 2026-08-23T18:15:44Z
+  oracle_dose_8:
+    job_id: 15240817.pbs101
+    state_at_lock: queued
+    action: user_hold
+    hold_applied_at: 2026-08-23T18:15:44Z
+stopping_rule:
+  primary_comparison: targeted_dose_8_vs_random_dose_8
+  negative_gate:
+    condition: targeted target successes are less than or equal to random target successes
+    actions:
+      - cancel original-distribution and oracle if still held or queued
+      - spend no further training SU on this boundary
+      - pivot to a multi-task boundary search
+  positive_gate:
+    condition: targeted target successes strictly exceed random and targeted regression loss does not exceed 0.02
+    actions:
+      - release original-distribution to complete the fair comparison
+      - release oracle only if it answers a remaining scientific question
+  regression_gate:
+    condition: targeted regression loss exceeds 0.02
+    actions:
+      - treat the gate as negative
+      - cancel original-distribution and oracle if still held or queued
+required_record:
+  - paired target outcomes
+  - Wilson intervals
+  - target and regression counts
+  - actual PBS accounting for every completed job
+  - held and cancelled job states
+  - decision rationale
+negative_gate_search:
+  suites: [libero_spatial, libero_object, libero_goal, libero_10]
+  selection_criteria:
+    - repeatability
+    - intervention_headroom
+    - persistence_under_canonical_replanning_and_control
+    - specificity_of_suspected_coverage_gap
+    - low_expected_coverage_from_random_data
+  prohibition: Do not select a task merely because it produces failures.

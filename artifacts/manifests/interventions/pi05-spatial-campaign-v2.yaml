@@ -2,6 +2,8 @@ campaign_id: pi05-spatial-intervention-v2
 experiment_id: exp_pi05_libero_spatial_boundary_v2
 hypothesis_id: evidence_weighted_targeting_reduces_dilution
 status: preregistered
+execution_mode: sequentially_gated
+gate_manifest: artifacts/manifests/campaigns/pi05-spatial-intervention-v2-gate.yaml
 source_evidence:
   - artifacts/results/pi05-spatial-intervention-v1/RESULT.md
   - artifacts/manifests/science/pi05-spatial-final-map.yaml
