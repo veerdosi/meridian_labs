@@ -8,6 +8,14 @@ import numpy as np
 from meridian.models import CapabilityMap, ExperimentSpec, Hypothesis, HypothesisKind, RolloutRecord
 
 
+def _finite_correlation(values: np.ndarray, outcomes: np.ndarray) -> float:
+    """Return a JSON-safe correlation when either sample is constant."""
+    if not np.std(values) or not np.std(outcomes):
+        return 0.0
+    correlation = float(np.corrcoef(values, outcomes)[0, 1])
+    return correlation if np.isfinite(correlation) else 0.0
+
+
 def evidence_package(
     spec: ExperimentSpec, capability_map: CapabilityMap, rollouts: list[RolloutRecord], output: Path
 ) -> Path:
@@ -16,9 +24,7 @@ def evidence_package(
     outcomes = np.asarray([float(r.success) for r in rollouts])
     for axis in spec.parameter_space.axes:
         values = np.asarray([r.parameters[axis.name] for r in rollouts])
-        correlations[axis.name] = (
-            float(np.corrcoef(values, outcomes)[0, 1]) if np.std(values) else 0.0
-        )
+        correlations[axis.name] = _finite_correlation(values, outcomes)
     payload = {
         "contract_version": 1,
         "experiment": spec.model_dump(mode="json"),
@@ -43,9 +49,7 @@ def propose_competing_hypotheses(
     correlations = {}
     for axis in spec.parameter_space.axes:
         values = np.asarray([r.parameters[axis.name] for r in rollouts])
-        correlations[axis.name] = (
-            float(np.corrcoef(values, outcomes)[0, 1]) if np.std(values) else 0.0
-        )
+        correlations[axis.name] = _finite_correlation(values, outcomes)
     strongest = max(correlations, key=lambda name: abs(correlations[name]))
     evidence = (
         capability_map.failure_clusters[0].evidence_rollout_ids
