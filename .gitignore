@@ -16,6 +16,8 @@ artifacts/**
 !artifacts/manifests/**
 !artifacts/results/
 !artifacts/results/**
+artifacts/results/**/*.sqlite-shm
+artifacts/results/**/*.sqlite-wal
 runs/**
 datasets/**
 checkpoints/**

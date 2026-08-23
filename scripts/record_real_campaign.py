@@ -146,7 +146,9 @@ def main() -> None:
         current_dose=int(campaign["dose"]),
         medium_dose=int(campaign["dose"]) * 2,
     )
-    with ExperimentStore(args.output / "experiment.sqlite") as store:
+    database_path = args.output / "experiment.sqlite"
+    database_path.unlink(missing_ok=True)
+    with ExperimentStore(database_path) as store:
         store.put("experiment", spec)
         for intervention in interventions.values():
             store.put("intervention", intervention)
@@ -181,6 +183,10 @@ def main() -> None:
     }
     (args.output / "paired_comparisons.json").write_text(
         json.dumps(paired, indent=2, sort_keys=True)
+    )
+    cost_summary = run_spec.get("cost_summary", {})
+    (args.output / "cost_summary.json").write_text(
+        json.dumps(cost_summary, indent=2, sort_keys=True)
     )
 
     ranked = sorted(evaluations, key=lambda item: item.target_success_rate, reverse=True)
@@ -240,6 +246,12 @@ def main() -> None:
             ),
             "",
             f"Decision engine: {decision.recommendation}",
+            "",
+            (
+                f"Campaign compute cost was {cost_summary.get('campaign_su', decision.total_su):.2f} "
+                f"SU; cumulative build-and-research usage was "
+                f"{cost_summary.get('cumulative_su', decision.total_su):.2f} SU."
+            ),
             "",
             "## Next action",
             "",

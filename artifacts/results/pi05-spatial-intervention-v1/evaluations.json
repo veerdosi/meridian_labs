@@ -1,0 +1,177 @@
+[
+  {
+    "arm": "none",
+    "checkpoint_id": "gs://openpi-assets/checkpoints/pi05_libero",
+    "cost": {
+      "actual_walltime_seconds": 498.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.13833333333333334,
+      "job_id": "15240093.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 7200,
+      "source": "nscc_pbs_finished_record",
+      "su": 8.8533333312
+    },
+    "created_at": "2026-08-23T16:42:25.408035Z",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
+    "id": "eval_d09cab3091774ad6",
+    "intervention_id": "pi05_spatial_none_v1",
+    "regression_delta": 0.0,
+    "regression_success_rate": 1.0,
+    "seed_results": {
+      "8101": 0.5,
+      "8102": 0.5,
+      "8103": 0.0,
+      "8104": 0.5,
+      "8105": 0.75
+    },
+    "target_ci": [
+      0.25819502085709295,
+      0.6579179916924003
+    ],
+    "target_success_rate": 0.45
+  },
+  {
+    "arm": "targeted",
+    "checkpoint_id": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-targeted/99",
+    "cost": {
+      "actual_walltime_seconds": 917.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.25472222222222224,
+      "job_id": "15240207.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 7200,
+      "source": "nscc_pbs_finished_record",
+      "su": 16.3022222208
+    },
+    "created_at": "2026-08-23T16:42:25.409681Z",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
+    "id": "eval_f095c4e175ab4df8",
+    "intervention_id": "pi05_spatial_targeted_v1",
+    "regression_delta": 0.0,
+    "regression_success_rate": 1.0,
+    "seed_results": {
+      "8101": 0.75,
+      "8102": 0.75,
+      "8103": 1.0,
+      "8104": 0.75,
+      "8105": 0.75
+    },
+    "target_ci": [
+      0.5839782779742401,
+      0.9193436467288
+    ],
+    "target_success_rate": 0.8
+  },
+  {
+    "arm": "random",
+    "checkpoint_id": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-random/99",
+    "cost": {
+      "actual_walltime_seconds": 790.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.21944444444444444,
+      "job_id": "15240208.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 7200,
+      "source": "nscc_pbs_finished_record",
+      "su": 14.0444444416
+    },
+    "created_at": "2026-08-23T16:42:25.411436Z",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
+    "id": "eval_73ea174c3cbf4cf1",
+    "intervention_id": "pi05_spatial_random_v1",
+    "regression_delta": 0.0,
+    "regression_success_rate": 1.0,
+    "seed_results": {
+      "8101": 1.0,
+      "8102": 1.0,
+      "8103": 0.75,
+      "8104": 1.0,
+      "8105": 1.0
+    },
+    "target_ci": [
+      0.7638641064874331,
+      0.9911187805671268
+    ],
+    "target_success_rate": 0.95
+  },
+  {
+    "arm": "original_distribution",
+    "checkpoint_id": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-original_distribution/99",
+    "cost": {
+      "actual_walltime_seconds": 890.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.24722222222222223,
+      "job_id": "15240209.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 7200,
+      "source": "nscc_pbs_finished_record",
+      "su": 15.8222222208
+    },
+    "created_at": "2026-08-23T16:42:25.413086Z",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
+    "id": "eval_8622209ce03b499f",
+    "intervention_id": "pi05_spatial_original_v1",
+    "regression_delta": 0.0,
+    "regression_success_rate": 1.0,
+    "seed_results": {
+      "8101": 1.0,
+      "8102": 0.75,
+      "8103": 0.75,
+      "8104": 1.0,
+      "8105": 1.0
+    },
+    "target_ci": [
+      0.6989617935882066,
+      0.9721341060158468
+    ],
+    "target_success_rate": 0.9
+  },
+  {
+    "arm": "oracle_targeted",
+    "checkpoint_id": "/scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-oracle_targeted/99",
+    "cost": {
+      "actual_walltime_seconds": 875.0,
+      "cpu_core_hours": 0.0,
+      "gpu_hours": 0.24305555555555555,
+      "job_id": "15240210.pbs101",
+      "queue": "gdev",
+      "requested_memory_gb": 0.0,
+      "requested_ncpus": 16,
+      "requested_ngpus": 1,
+      "requested_walltime_seconds": 1800,
+      "source": "nscc_pbs_finished_record",
+      "su": 15.5555555584
+    },
+    "created_at": "2026-08-23T16:42:25.414729Z",
+    "experiment_id": "exp_pi05_libero_spatial_boundary_v1",
+    "id": "eval_9891d141602b4cd7",
+    "intervention_id": "pi05_spatial_oracle_v1",
+    "regression_delta": 0.0,
+    "regression_success_rate": 1.0,
+    "seed_results": {
+      "8101": 1.0,
+      "8102": 1.0,
+      "8103": 0.75,
+      "8104": 1.0,
+      "8105": 1.0
+    },
+    "target_ci": [
+      0.7638641064874331,
+      0.9911187805671268
+    ],
+    "target_success_rate": 0.95
+  }
+]
