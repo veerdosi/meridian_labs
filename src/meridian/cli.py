@@ -78,12 +78,12 @@ def surrogate_e2e(
 @app.command("map-results")
 def map_results(
     config: Annotated[Path, typer.Option(exists=True)],
-    rollouts: Annotated[Path, typer.Option(exists=True)],
+    rollouts: Annotated[list[Path], typer.Option(exists=True)],
     output: Annotated[Path, typer.Option()],
 ) -> None:
     """Ingest parameterized LIBERO results and produce a capability/scientist packet."""
     spec = ExperimentSpec.model_validate(yaml.safe_load(config.read_text()))
-    records = ingest_libero_rollouts(spec, rollouts)
+    records = [record for path in rollouts for record in ingest_libero_rollouts(spec, path)]
     capability_map = build_capability_map(spec, records)
     output.mkdir(parents=True, exist_ok=True)
     with ExperimentStore(output / "experiment.sqlite") as store:
