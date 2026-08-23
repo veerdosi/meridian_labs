@@ -1,0 +1,43 @@
+id: pi05-libero-harder-boundary-confirmation-v1
+status: locked_before_screen_outcomes
+locked_at_utc: 2026-08-23T19:15:45Z
+training_launch_gate:
+  condition: The selected boundary is the highest-ranked eligible candidate under configs/pi05_libero_multitask_boundary_search.yaml.
+  prohibition: Do not launch any training job before repeated validation and canonical-control probes are complete.
+arms:
+  released_checkpoint: {training_dose: 0}
+  targeted: {training_dose: 8}
+  random: {training_dose: 8}
+  original_distribution: {training_dose: 8}
+fairness:
+  same_base_checkpoint: true
+  equal_training_steps: true
+  equal_examples_for_trained_arms: 8
+  paired_evaluation_across_arms: true
+untouched_holdouts:
+  target:
+    trials: 60
+    seeds: [31000, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31013, 31014, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 31025, 31026, 31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038, 31039, 31040, 31041, 31042, 31043, 31044, 31045, 31046, 31047, 31048, 31049, 31050, 31051, 31052, 31053, 31054, 31055, 31056, 31057, 31058, 31059]
+    init_state_rule: (7 + 17 * trial_index) modulo 50
+    perturbation_jitter_seed: 31199
+  regression:
+    suites: [libero_spatial, libero_object, libero_goal, libero_10]
+    trials_per_suite: 10
+    seeds_by_suite:
+      libero_spatial: [32000, 32001, 32002, 32003, 32004, 32005, 32006, 32007, 32008, 32009]
+      libero_object: [32100, 32101, 32102, 32103, 32104, 32105, 32106, 32107, 32108, 32109]
+      libero_goal: [32200, 32201, 32202, 32203, 32204, 32205, 32206, 32207, 32208, 32209]
+      libero_10: [32300, 32301, 32302, 32303, 32304, 32305, 32306, 32307, 32308, 32309]
+    task_rule: (selected task id + trial_index) modulo 10
+    init_state_rule: (13 + 19 * trial_index) modulo 50
+confirmation_thresholds:
+  primary: targeted versus random on paired target trials
+  minimum_targeted_gain_over_random: 0.10
+  targeted_vs_random_exact_p_max: 0.05
+  paired_direction: targeted wins must exceed targeted losses
+  minimum_targeted_gain_over_original_distribution: 0.10
+  regression_noninferiority_margin_vs_released: 0.05
+  required_reporting: [Wilson intervals, paired wins-losses-ties, exact paired p-value, actual PBS SU]
+decision:
+  confirmed: All confirmation thresholds pass on untouched holdouts.
+  not_confirmed: Any primary, original-distribution, or regression threshold fails; report honestly and do not generalize.
