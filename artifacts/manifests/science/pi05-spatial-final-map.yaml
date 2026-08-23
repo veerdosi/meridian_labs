@@ -1,0 +1,27 @@
+experiment_id: exp_pi05_libero_spatial_boundary_v1
+rollouts: 99
+successes: 86
+failures: 13
+global_success_rate: 0.8686868687
+failure_regions: 1
+boundary_pairs: 15
+selected_region:
+  observations: 22
+  successes: 10
+  success_rate: 0.4545454545
+  bounds:
+    init_state_index: [0.0, 16.6663333333]
+    camera_x: [0.0666666667, 0.2]
+    camera_yaw_deg: [13.3333333333, 40.0]
+    brightness: [0.7666666667, 1.2333333333]
+    occlusion: [0.1666666667, 0.3333333333]
+    visual_distractors: [0.0, 5.333]
+    replan_steps: [1.0, 5.9996666667]
+    action_noise: [0.0, 0.0266666667]
+artifacts:
+  capability_map:
+    path: artifacts/analysis/pi05-spatial-final-map/capability_map.json
+    sha256: dfa372517258ec89e7f59a2c51b78f0c55e03a334383deadbc88590c66f53647
+  scientist_evidence:
+    path: artifacts/analysis/pi05-spatial-final-map/scientist_evidence.json
+    sha256: d0dde27135f276546bf33c8e4cb11e7861e0e2e48f2520c833e1b84bd2a41563
