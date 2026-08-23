@@ -42,27 +42,46 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--stochastic-repeats", type=int, default=4)
     parser.add_argument("--seed", type=int, default=5000)
+    parser.add_argument("--failure-id", action="append")
+    parser.add_argument("--repeat-family", action="append")
+    parser.add_argument("--only-repeats", action="store_true")
     args = parser.parse_args()
     records = [json.loads(line) for line in args.rollouts.read_text().splitlines() if line]
     failures = [record for record in records if not record["success"]]
+    if args.failure_id:
+        selected_ids = set(args.failure_id)
+        failures = [record for record in failures if record["id"] in selected_ids]
     if not failures:
         raise SystemExit("no failures found")
 
     plans = []
-    families = [
-        ("exact", VIEW | VISUAL | CONTROL),
-        ("canonical", set()),
-        ("view-only", VIEW),
-        ("visual-only", VISUAL),
-        ("control-only", CONTROL),
-        ("view-visual", VIEW | VISUAL),
-    ]
+    families = {
+        "exact": VIEW | VISUAL | CONTROL,
+        "canonical": set(),
+        "view-only": VIEW,
+        "visual-only": VISUAL,
+        "control-only": CONTROL,
+        "view-visual": VIEW | VISUAL,
+        "view-visual-action-noise": VIEW | VISUAL | {"action_noise"},
+        "view-visual-replan": VIEW | VISUAL | {"replan_steps"},
+    }
+    repeat_families = args.repeat_family or ["exact"]
+    unknown = set(repeat_families) - families.keys()
+    if unknown:
+        raise SystemExit(f"unknown repeat families: {', '.join(sorted(unknown))}")
     for failure_index, failure in enumerate(failures):
-        plans.extend(condition(failure, name, retained) for name, retained in families)
-        for repeat in range(args.stochastic_repeats):
-            plan = condition(failure, f"exact-repeat-{repeat}", VIEW | VISUAL | CONTROL)
-            plan["seed"] = args.seed + failure_index * args.stochastic_repeats + repeat
-            plans.append(plan)
+        if not args.only_repeats:
+            plans.extend(condition(failure, name, retained) for name, retained in families.items())
+        for family_index, family in enumerate(repeat_families):
+            for repeat in range(args.stochastic_repeats):
+                plan = condition(failure, f"{family}-repeat-{repeat}", families[family])
+                plan["seed"] = (
+                    args.seed
+                    + failure_index * len(repeat_families) * args.stochastic_repeats
+                    + family_index * args.stochastic_repeats
+                    + repeat
+                )
+                plans.append(plan)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w") as stream:
