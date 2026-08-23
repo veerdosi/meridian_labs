@@ -31,6 +31,23 @@ jobs:
     state_at_lock: queued
     action: user_hold
     hold_applied_at: 2026-08-23T18:15:44Z
+  released_checkpoint_regression_repair:
+    job_id: 15240891.pbs101
+    state_at_submission: queued
+    action: allow_to_complete
+    plan: configs/plans/pi05-spatial-campaign-regression-repair-v2.jsonl
+  targeted_regression_repair:
+    job_id: 15240892.pbs101
+    dependency: afterany:15240814.pbs101
+    state_at_submission: held_by_dependency
+    action: allow_to_complete
+    plan: configs/plans/pi05-spatial-campaign-regression-repair-v2.jsonl
+  random_regression_repair:
+    job_id: 15240893.pbs101
+    dependency: afterany:15240815.pbs101
+    state_at_submission: held_by_dependency
+    action: allow_to_complete
+    plan: configs/plans/pi05-spatial-campaign-regression-repair-v2.jsonl
 stopping_rule:
   primary_comparison: targeted_dose_8_vs_random_dose_8
   negative_gate:
@@ -56,6 +73,12 @@ required_record:
   - actual PBS accounting for every completed job
   - held and cancelled job states
   - decision rationale
+evaluation_plan_correction:
+  discovered_at: 2026-08-23T18:21:00Z
+  issue: Regression repeats 3 and 4 used initial-state indices 51 and 68, outside LIBERO's 0-49 range.
+  impact: Job 15240813 completed all 40 target trials and the first 3 regression trials before exiting 1. Running targeted/random jobs use the same already-loaded plan and will not be killed.
+  correction: Preserve every completed outcome; replace invalid regression indices with modulo-50 indices 1 and 18 and run the same missing 17 regression cases for released, targeted, and random checkpoints.
+  fairness: The repaired regression cases and IDs are identical across all three gate arms; the 40-trial paired target plan is unchanged.
 negative_gate_search:
   suites: [libero_spatial, libero_object, libero_goal, libero_10]
   selection_criteria:

@@ -11,6 +11,7 @@ import numpy as np
 import yaml
 
 from meridian.models import ExperimentSpec
+from meridian.planning import spread_init_state_index
 
 
 def main() -> None:
@@ -57,7 +58,7 @@ def main() -> None:
                     "evaluation_suite": f"regression:{suite}",
                     "evaluation_seed": 9000 + suite_index,
                     **canonical,
-                    "init_state_index": float(repeat * 17),
+                    "init_state_index": float(spread_init_state_index(repeat)),
                 }
             )
     args.output.parent.mkdir(parents=True, exist_ok=True)
