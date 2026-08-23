@@ -41,7 +41,8 @@ cd "$OPENPI_ROOT"
   --policy.dir "$CHECKPOINT_DIR" > "$RUN_ROOT/server.log" 2>&1 &
 SERVER_PID=$!
 
-"$ROOT/envs/openpi/bin/python" - <<'PY'
+timeout 300 "$ROOT/envs/openpi/bin/python" - <<'PY' \
+  > "$RUN_ROOT/readiness.log" 2>&1
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
 
 client = WebsocketClientPolicy("127.0.0.1", 8000)
@@ -57,9 +58,9 @@ export MUJOCO_EGL_DEVICE_ID=0
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
   --host 127.0.0.1 --port 8000 \
   --plans "$PLANS_FILE" \
-  --output "$RUN_ROOT/rollouts"
+  --output "$RUN_ROOT/rollouts" \
+  > >(tee "$RUN_ROOT/runner.log") 2>&1
 
 printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\n' \
   "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
-
