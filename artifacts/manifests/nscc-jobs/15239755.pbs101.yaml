@@ -28,8 +28,10 @@ training:
   first_step_grad_norm: 0.1880
 checkpoint:
   cluster_path: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/gate0-15239655/1
+  external_ssd_path: artifacts/checkpoints/meridian_pi05_libero/gate0-15239655/1
   files: 30
   bytes: 9226268027
+  backup_verified: rsync_size_and_mtime_match
 adapted_rollout:
   success: true
   steps: 138
