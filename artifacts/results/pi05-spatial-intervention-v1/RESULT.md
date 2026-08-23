@@ -18,7 +18,7 @@ Preregistered hypothesis: Uniform data sampled from the selected compound visual
 
 ## Decision
 
-Targeted data improved over no intervention by +35%, but trailed matched random by -15% and original-distribution data by -10%.
+Targeted data changed target success versus no intervention by +35%, with lift versus matched random of -15% and versus original-distribution data of -10%.
 
 The preregistered targeted-selection hypothesis is falsified at this dose.
 

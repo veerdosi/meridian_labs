@@ -208,6 +208,9 @@ def main() -> None:
     original = next(item for item in evaluations if item.arm == InterventionArm.ORIGINAL)
     none = next(item for item in evaluations if item.arm == InterventionArm.NONE)
     report_context = campaign.get("report_context", {})
+    gate = None
+    if gate_path := campaign.get("gate_manifest"):
+        gate = yaml.safe_load(Path(gate_path).read_text())
     boundary_summary = report_context.get(
         "learned_boundary_and_mechanism",
         (
@@ -261,16 +264,42 @@ def main() -> None:
             f"{result.regression_success_rate:.0%} ({result.regression_delta:+.0%}) | "
             f"{result.cost.su or 0:.2f} |"
         )
+    if gate is not None and (gate_result := gate.get("gate_result")):
+        gate_targeted = gate_result["targeted"]
+        gate_random = gate_result["random"]
+        gate_paired = gate_result["paired_targeted_vs_random"]
+        oracle_job = gate["jobs"]["oracle_dose_8"]
+        lines.extend(
+            [
+                "",
+                "## Sequential gate",
+                "",
+                (
+                    f"The locked gate was **{gate_result['outcome']}**: targeted achieved "
+                    f"{gate_targeted['target_successes']}/{gate_targeted['target_trials']} and "
+                    f"random achieved {gate_random['target_successes']}/{gate_random['target_trials']}. "
+                    f"Paired outcomes were {gate_paired['wins']} wins, "
+                    f"{gate_paired['losses']} losses, and {gate_paired['ties']} ties "
+                    f"(two-sided sign-test p={gate_paired['two_sided_sign_p']:.3f})."
+                ),
+                "",
+                (
+                    "Original-distribution data was released for the fair comparison. Oracle was "
+                    f"{oracle_job['final_state'].replace('_', ' ')} at zero SU because "
+                    f"{oracle_job['cancellation_reason']}"
+                ),
+            ]
+        )
     lines.extend(
         [
             "",
             "## Decision",
             "",
             (
-                f"Targeted data improved over no intervention by "
-                f"{targeted.target_success_rate - none.target_success_rate:+.0%}, but trailed "
-                f"matched random by {targeted.target_success_rate - random.target_success_rate:+.0%} "
-                f"and original-distribution data by "
+                f"Targeted data changed target success versus no intervention by "
+                f"{targeted.target_success_rate - none.target_success_rate:+.0%}, with lift versus "
+                f"matched random of {targeted.target_success_rate - random.target_success_rate:+.0%} "
+                f"and versus original-distribution data of "
                 f"{targeted.target_success_rate - original.target_success_rate:+.0%}."
             ),
             "",
