@@ -44,6 +44,7 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
+    used_source_ids = set()
     for intervention in interventions:
         if intervention.arm in {InterventionArm.NONE, InterventionArm.NO_DATA_FIX}:
             continue
@@ -90,6 +91,7 @@ def main() -> None:
                     **point,
                 }
             )
+            used_source_ids.add(source["id"])
         output = args.output / f"{intervention.arm.value}.jsonl"
         with output.open("w") as stream:
             for plan in plans:
@@ -100,6 +102,15 @@ def main() -> None:
             "unique_sources": len({plan["source_rollout_id"] for plan in plans}),
             "path": str(output),
         }
+    source_output = args.output / "sources.jsonl"
+    with source_output.open("w") as stream:
+        for source in sources:
+            if source["id"] in used_source_ids:
+                stream.write(json.dumps(source, sort_keys=True) + "\n")
+    summary["sources"] = {
+        "records": len(used_source_ids),
+        "path": str(source_output),
+    }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True))
     print(json.dumps(summary, sort_keys=True))
 

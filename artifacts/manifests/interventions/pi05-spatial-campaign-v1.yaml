@@ -1,0 +1,79 @@
+campaign_id: pi05-spatial-intervention-v1
+experiment_id: exp_pi05_libero_spatial_boundary_v1
+hypothesis_id: compound_visual_coverage_x_short_replanning
+source_decisions:
+  - artifacts/manifests/science/pi05-spatial-wide-probe1-decision.yaml
+  - artifacts/manifests/science/pi05-spatial-control-probe2-decision.yaml
+starting_checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+dose: 24
+training_steps: 100
+matched_requirements:
+  same_starting_checkpoint: true
+  same_trajectory_count: true
+  same_training_steps: true
+  fixed_evaluation_plan: true
+  held_out_evaluation_seeds: [8101, 8102, 8103, 8104, 8105]
+target_capability:
+  description: task-0 manipulation under moderate compound view/visual stress with two-step replanning and recovery noise
+  bounds:
+    init_state_index: [0.0, 6.0]
+    camera_x: [0.08, 0.12]
+    camera_yaw_deg: [32.0, 38.0]
+    brightness: [0.9, 1.1]
+    occlusion: [0.18, 0.28]
+    visual_distractors: [3.0, 6.0]
+    replan_steps: [2.0, 2.999]
+    action_noise: [0.02, 0.03]
+interventions:
+  - id: pi05_spatial_none_v1
+    experiment_id: exp_pi05_libero_spatial_boundary_v1
+    hypothesis_id: compound_visual_coverage_x_short_replanning
+    arm: none
+    source: none
+    trajectory_count: 0
+    target_bounds: &target_bounds
+      init_state_index: [0.0, 6.0]
+      camera_x: [0.08, 0.12]
+      camera_yaw_deg: [32.0, 38.0]
+      brightness: [0.9, 1.1]
+      occlusion: [0.18, 0.28]
+      visual_distractors: [3.0, 6.0]
+      replan_steps: [2.0, 2.999]
+      action_noise: [0.02, 0.03]
+    diversity_requirements: {}
+    quality_checks: []
+    training_steps: 0
+    seed: 100
+  - &trained_arm
+    id: pi05_spatial_targeted_v1
+    experiment_id: exp_pi05_libero_spatial_boundary_v1
+    hypothesis_id: compound_visual_coverage_x_short_replanning
+    arm: targeted
+    source: simulation
+    trajectory_count: 24
+    target_bounds: *target_bounds
+    diversity_requirements: {init_state_index: 4, camera_x: 4, camera_yaw_deg: 4, occlusion: 4, visual_distractors: 4}
+    quality_checks: [finite_actions, task_success, parameter_coverage, provenance_complete]
+    training_steps: 100
+    seed: 101
+  - <<: *trained_arm
+    id: pi05_spatial_random_v1
+    arm: random
+    seed: 102
+  - <<: *trained_arm
+    id: pi05_spatial_original_v1
+    arm: original_distribution
+    seed: 103
+  - <<: *trained_arm
+    id: pi05_spatial_oracle_v1
+    arm: oracle_targeted
+    seed: 104
+cost_envelope:
+  cumulative_su_before_campaign_estimated: 72.76
+  expected_additional_su_range: [70, 140]
+  pbs_hard_reservation_ceiling_su: 768
+  note: hard ceiling assumes every bounded job consumes its full walltime; measured jobs are charged by actual walltime
+rollout_budget:
+  completed_before_campaign: 99
+  planned_campaign_evaluations: 160
+  configured_total_limit: 320

@@ -1,0 +1,31 @@
+experiment_id: exp_pi05_libero_spatial_boundary_v1
+probe_job_id: 15240021.pbs101
+target_failure_id: exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+matched_results:
+  view_visual_canonical_control:
+    successes: 3
+    trials: 5
+    success_rate: 0.6
+  view_visual_action_noise_only:
+    successes: 5
+    trials: 5
+    success_rate: 1.0
+  view_visual_short_replanning_only:
+    successes: 0
+    trials: 5
+    success_rate: 0.0
+inference:
+  supported_mechanism: frequent action resampling under unstable out-of-distribution observations amplifies inconsistent action chunks
+  action_noise_status: rejected_as_sole_cause
+  visual_data_hypothesis_status: selected_for_intervention
+  qualification: targeted data must be evaluated with the original short-replanning target; canonical replanning is a no-training mitigation benchmark
+selected_intervention:
+  spec: artifacts/manifests/interventions/pi05-spatial-campaign-v1.yaml
+  source: simulation_successful_action_replay
+  dose: 24
+  training_steps: 100
+  comparison_arms: [none, targeted, random, original_distribution, oracle_targeted]
+decision_vetoes:
+  - reject any replay dataset containing unsuccessful trajectories
+  - reject training comparisons with unequal dose, steps, or starting checkpoint
+  - do not claim data is necessary if canonical replanning matches or exceeds targeted training on the held-out target

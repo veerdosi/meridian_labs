@@ -1,0 +1,30 @@
+{
+  "oracle_targeted": {
+    "intervention_id": "pi05_spatial_oracle_v1",
+    "path": "configs/plans/pi05-spatial-intervention-replays-v1/oracle_targeted.jsonl",
+    "plans": 24,
+    "unique_sources": 24
+  },
+  "original_distribution": {
+    "intervention_id": "pi05_spatial_original_v1",
+    "path": "configs/plans/pi05-spatial-intervention-replays-v1/original_distribution.jsonl",
+    "plans": 24,
+    "unique_sources": 24
+  },
+  "random": {
+    "intervention_id": "pi05_spatial_random_v1",
+    "path": "configs/plans/pi05-spatial-intervention-replays-v1/random.jsonl",
+    "plans": 24,
+    "unique_sources": 24
+  },
+  "sources": {
+    "path": "configs/plans/pi05-spatial-intervention-replays-v1/sources.jsonl",
+    "records": 55
+  },
+  "targeted": {
+    "intervention_id": "pi05_spatial_targeted_v1",
+    "path": "configs/plans/pi05-spatial-intervention-replays-v1/targeted.jsonl",
+    "plans": 24,
+    "unique_sources": 24
+  }
+}
