@@ -28,11 +28,14 @@ class ParameterAxis(BaseModel):
     low: float
     high: float
     semantic: str
+    canonical: float | None = None
 
     @model_validator(mode="after")
     def valid_bounds(self) -> ParameterAxis:
         if self.high <= self.low:
             raise ValueError("axis high must be greater than low")
+        if self.canonical is not None and not self.low <= self.canonical <= self.high:
+            raise ValueError("axis canonical value must be within bounds")
         return self
 
 

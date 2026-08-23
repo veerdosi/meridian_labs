@@ -1,0 +1,25 @@
+job_id: 15239655.pbs101
+purpose: gate0_pi05_libero_baseline_rollout
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 5400}
+actual:
+  walltime_seconds: 213
+  gpu_hours: 0.0591666667
+  su_estimated: 3.7866666688
+  peak_host_memory_kb: 12913600
+exit_status: 0
+result: passed
+rollout:
+  task_suite: libero_spatial
+  task_id: 0
+  seed: 7
+  init_state_index: 0
+  success: true
+  steps: 105
+  duration_seconds: 78.27591751201544
+  inference_seconds: 51.22147969197249
+  trace_bytes: 15574584
+  trace_sha256: b640b9e24f50bdf6ded58aea486c976910f064e6801348c27de87735c589bf1c
+  video_bytes: 85547
+classification: Gate 0 plumbing and cost evidence only; not a research result

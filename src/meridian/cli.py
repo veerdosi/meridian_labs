@@ -126,5 +126,41 @@ def plan_search(
     typer.echo(f"experiment={spec.id} prior={len(prior)} proposed={len(points)} plans={output}")
 
 
+@app.command("plan-anchors")
+def plan_anchors(
+    config: Annotated[Path, typer.Option(exists=True)],
+    output: Annotated[Path, typer.Option()],
+    task_id: Annotated[int, typer.Option(min=0)] = 0,
+    repeats: Annotated[int, typer.Option(min=1)] = 4,
+    seed: Annotated[int, typer.Option()] = 2000,
+) -> None:
+    """Create canonical repeats and one-axis-at-a-time low/high probes."""
+    spec = ExperimentSpec.model_validate(yaml.safe_load(config.read_text()))
+    missing = [axis.name for axis in spec.parameter_space.axes if axis.canonical is None]
+    if missing:
+        raise typer.BadParameter(f"axes require canonical values: {', '.join(missing)}")
+    canonical = {axis.name: axis.canonical for axis in spec.parameter_space.axes}
+    points = [("canonical", dict(canonical)) for _ in range(repeats)]
+    for axis in spec.parameter_space.axes:
+        for label, value in (("low", axis.low), ("high", axis.high)):
+            if value == axis.canonical:
+                continue
+            point = dict(canonical)
+            point[axis.name] = value
+            points.append((f"{axis.name}-{label}", point))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w") as stream:
+        for index, (label, point) in enumerate(points):
+            plan = {
+                "id": f"{spec.id}-anchor-{label}-{index:03d}",
+                "task_suite": spec.task_suite,
+                "task_id": task_id,
+                "seed": seed + index,
+                **point,
+            }
+            stream.write(json.dumps(plan, sort_keys=True) + "\n")
+    typer.echo(f"experiment={spec.id} anchors={len(points)} plans={output}")
+
+
 if __name__ == "__main__":
     app()

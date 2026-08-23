@@ -1,0 +1,65 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+#PBS -N meridian-evaluate
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${PLANS_FILE:?submit with qsub -v PLANS_FILE=<absolute-cluster-path>,RUN_ID=<id>}"
+: "${RUN_ID:?submit with qsub -v PLANS_FILE=<path>,RUN_ID=<id>}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+OPENPI_ROOT="$ROOT/src/openpi"
+RUN_ROOT="$ROOT/artifacts/evaluations/$RUN_ID/$PBS_JOBID"
+POLICY_CONFIG=${POLICY_CONFIG:-pi05_libero}
+CHECKPOINT_DIR=${CHECKPOINT_DIR:-gs://openpi-assets/checkpoints/pi05_libero}
+export OPENPI_DATA_HOME="$ROOT/cache/openpi"
+export UV_CACHE_DIR="$ROOT/cache/uv"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.85
+export PYTHONUNBUFFERED=1
+
+mkdir -p "$RUN_ROOT"
+module load python/3.11.7-gcc11 cuda/12.2.2
+nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
+MONITOR_PID=$!
+SERVER_PID=
+cleanup() {
+  if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi
+  kill "$MONITOR_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+cd "$OPENPI_ROOT"
+"$ROOT/envs/openpi/bin/python" scripts/serve_policy.py \
+  --port 8000 \
+  policy:checkpoint \
+  --policy.config "$POLICY_CONFIG" \
+  --policy.dir "$CHECKPOINT_DIR" > "$RUN_ROOT/server.log" 2>&1 &
+SERVER_PID=$!
+
+"$ROOT/envs/openpi/bin/python" - <<'PY'
+from openpi_client.websocket_client_policy import WebsocketClientPolicy
+
+client = WebsocketClientPolicy("127.0.0.1", 8000)
+print(client.get_server_metadata())
+PY
+
+module unload python/3.11.7-gcc11
+module load python/3.8.13
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
+export MUJOCO_GL=egl
+export MUJOCO_EGL_DEVICE_ID=0
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/openpi_libero_rollout.py" \
+  --host 127.0.0.1 --port 8000 \
+  --plans "$PLANS_FILE" \
+  --output "$RUN_ROOT/rollouts"
+
+printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\n' \
+  "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" > "$RUN_ROOT/inputs.txt"
+find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
+
