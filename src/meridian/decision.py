@@ -10,6 +10,7 @@ class InterventionDecision(BaseModel):
     targeted_gain_over_none: float
     targeted_gain_over_random: float
     targeted_gain_over_original: float
+    targeted_regression: float
     worst_regression: float
     total_su: float
     recommendation: str
@@ -38,8 +39,9 @@ def decide_intervention(
     gain_random = targeted.target_success_rate - random.target_success_rate
     gain_original = targeted.target_success_rate - original.target_success_rate
     worst_regression = min(result.regression_delta for result in evaluations)
+    targeted_regression = targeted.regression_delta
     total_su = sum(result.cost.su or 0.0 for result in evaluations)
-    if worst_regression < -max_regression:
+    if targeted_regression < -max_regression:
         selected = InterventionArm.NONE
         recommendation = (
             "Reject the data intervention because its regression exceeds the locked limit."
@@ -68,6 +70,7 @@ def decide_intervention(
         targeted_gain_over_none=gain_none,
         targeted_gain_over_random=gain_random,
         targeted_gain_over_original=gain_original,
+        targeted_regression=targeted_regression,
         worst_regression=worst_regression,
         total_su=total_su,
         recommendation=recommendation,

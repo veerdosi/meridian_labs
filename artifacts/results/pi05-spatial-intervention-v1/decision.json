@@ -5,6 +5,7 @@
   "targeted_gain_over_none": 0.35000000000000003,
   "targeted_gain_over_original": -0.09999999999999998,
   "targeted_gain_over_random": -0.1499999999999999,
+  "targeted_regression": 0.0,
   "total_su": 70.5777777728,
   "worst_regression": 0.0
 }
