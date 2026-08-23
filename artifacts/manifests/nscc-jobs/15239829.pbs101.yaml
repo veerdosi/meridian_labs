@@ -1,0 +1,22 @@
+job_id: 15239829.pbs101
+purpose: pi05_libero_spatial_interaction_search_attempt_2
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 7200}
+actual:
+  walltime_seconds: 27
+  gpu_hours: 0.0075
+  su_estimated: 0.48
+exit_status: 1
+result: failed_before_rollouts
+failure:
+  class: egl_uuid_normalization
+  detail: PBS supplied CUDA_VISIBLE_DEVICES as a GPU UUID, which MuJoCo 2.3 cannot parse as an integer EGL device index
+  allocated_device: /dev/nvidia3
+  research_rollouts: 0
+remediation:
+  source_commit: 4d38038
+  change: map PBS UUID to the physical nvidia-smi index, then normalize the CPU-only LIBERO client environment
+  replacement_job_id: 15239835.pbs101
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-spatial-interactions-v1-r2/15239829.pbs101
