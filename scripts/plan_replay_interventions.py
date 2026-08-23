@@ -10,7 +10,13 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from meridian.models import ExperimentSpec, InterventionArm, InterventionSpec
+from meridian.intervention import sample_axis_value
+from meridian.models import (
+    ExperimentSpec,
+    InterventionArm,
+    InterventionSamplingStrategy,
+    InterventionSpec,
+)
 
 OBSERVATION_AXES = {
     "camera_x",
@@ -19,6 +25,17 @@ OBSERVATION_AXES = {
     "occlusion",
     "visual_distractors",
 }
+
+
+def resolved_strategy(intervention: InterventionSpec) -> InterventionSamplingStrategy:
+    if intervention.sampling_strategy != InterventionSamplingStrategy.ARM_DEFAULT:
+        return intervention.sampling_strategy
+    return {
+        InterventionArm.TARGETED: InterventionSamplingStrategy.BOUNDS_UNIFORM,
+        InterventionArm.ORACLE: InterventionSamplingStrategy.CENTER,
+        InterventionArm.RANDOM: InterventionSamplingStrategy.FULL_UNIFORM,
+        InterventionArm.ORIGINAL: InterventionSamplingStrategy.CANONICAL,
+    }[intervention.arm]
 
 
 def main() -> None:
@@ -49,6 +66,7 @@ def main() -> None:
         if intervention.arm in {InterventionArm.NONE, InterventionArm.NO_DATA_FIX}:
             continue
         rng = np.random.default_rng(intervention.seed)
+        strategy = resolved_strategy(intervention)
         eligible = sources
         init_bounds = intervention.target_bounds.get("init_state_index")
         if intervention.arm in {InterventionArm.TARGETED, InterventionArm.ORACLE} and init_bounds:
@@ -60,25 +78,35 @@ def main() -> None:
         if not eligible:
             raise SystemExit(f"no eligible source rollout for {intervention.id}")
         order = rng.permutation(len(eligible))
+        target_components: list[bool | None] = [None] * intervention.trajectory_count
+        if strategy == InterventionSamplingStrategy.EVIDENCE_WEIGHTED_MIXTURE:
+            target_count = round(intervention.trajectory_count * intervention.target_fraction)
+            flags = np.array(
+                [True] * target_count
+                + [False] * (intervention.trajectory_count - target_count)
+            )
+            target_components = [bool(value) for value in rng.permutation(flags)]
         plans = []
         for index in range(intervention.trajectory_count):
             source = eligible[int(order[index % len(order)])]
             point = dict(canonical)
             point["init_state_index"] = float(source["init_state_index"])
+            use_target_component = target_components[index]
             for axis in spec.parameter_space.axes:
                 if axis.name not in OBSERVATION_AXES:
                     continue
-                if intervention.arm == InterventionArm.ORIGINAL:
-                    value = canonical[axis.name]
-                elif intervention.arm == InterventionArm.RANDOM:
-                    value = float(rng.uniform(axis.low, axis.high))
-                elif intervention.arm == InterventionArm.ORACLE:
-                    low, high = intervention.target_bounds[axis.name]
-                    value = float((low + high) / 2)
-                else:
-                    low, high = intervention.target_bounds[axis.name]
-                    value = float(rng.uniform(low, high))
-                point[axis.name] = value
+                low, high = intervention.target_bounds[axis.name]
+                point[axis.name] = sample_axis_value(
+                    strategy=strategy,
+                    rng=rng,
+                    axis_low=axis.low,
+                    axis_high=axis.high,
+                    target_low=low,
+                    target_high=high,
+                    canonical=float(canonical[axis.name]),
+                    target_fraction=intervention.target_fraction,
+                    use_target_component=use_target_component,
+                )
             plans.append(
                 {
                     "id": f"{intervention.id}-episode-{index:04d}",
@@ -88,6 +116,11 @@ def main() -> None:
                     "source_rollout_id": source["id"],
                     "intervention_id": intervention.id,
                     "arm": intervention.arm.value,
+                    "sampling_component": (
+                        "target" if use_target_component else "broad"
+                        if use_target_component is not None
+                        else strategy.value
+                    ),
                     **point,
                 }
             )
@@ -99,6 +132,11 @@ def main() -> None:
         summary[intervention.arm.value] = {
             "intervention_id": intervention.id,
             "plans": len(plans),
+            "sampling_strategy": strategy.value,
+            "target_fraction": intervention.target_fraction,
+            "target_component_plans": sum(
+                plan["sampling_component"] == "target" for plan in plans
+            ),
             "unique_sources": len({plan["source_rollout_id"] for plan in plans}),
             "path": str(output),
         }

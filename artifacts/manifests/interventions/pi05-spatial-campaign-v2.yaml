@@ -1,0 +1,85 @@
+campaign_id: pi05-spatial-intervention-v2
+experiment_id: exp_pi05_libero_spatial_boundary_v2
+hypothesis_id: evidence_weighted_targeting_reduces_dilution
+status: preregistered
+source_evidence:
+  - artifacts/results/pi05-spatial-intervention-v1/RESULT.md
+  - artifacts/manifests/science/pi05-spatial-final-map.yaml
+starting_checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+dose: 8
+training_steps: 100
+matched_requirements:
+  same_starting_checkpoint: true
+  same_trajectory_count: true
+  same_training_steps: true
+  fixed_evaluation_plan: true
+  held_out_evaluation_seeds: [8201, 8202, 8203, 8204, 8205, 8206, 8207, 8208, 8209, 8210]
+hypothesis:
+  statement: A low-dose mixture concentrated around the supported boundary while retaining broad visual coverage has higher marginal target value than uniform full-space or canonical data.
+  rationale: The first campaign's exact-center oracle and full-space random arms both reached 95%, while uniform sampling inside the selected box reached 80%, consistent with target dilution rather than lack of trainability.
+  predicted_result: The evidence-weighted targeted arm beats equal-dose random and original-distribution arms on the held-out target without more than two percentage points of canonical regression.
+  falsification: Reject the refined targeting rule if it does not strictly beat both fair baselines; do not relabel the oracle or best post-hoc arm as selected.
+target_capability:
+  description: task-0 manipulation under moderate compound view/visual stress with two-step replanning and recovery noise
+  bounds: &target_bounds
+    init_state_index: [0.0, 6.0]
+    camera_x: [0.08, 0.12]
+    camera_yaw_deg: [32.0, 38.0]
+    brightness: [0.9, 1.1]
+    occlusion: [0.18, 0.28]
+    visual_distractors: [3.0, 6.0]
+    replan_steps: [2.0, 2.999]
+    action_noise: [0.02, 0.03]
+interventions:
+  - id: pi05_spatial_none_v2
+    experiment_id: exp_pi05_libero_spatial_boundary_v2
+    hypothesis_id: evidence_weighted_targeting_reduces_dilution
+    arm: none
+    source: none
+    trajectory_count: 0
+    target_bounds: *target_bounds
+    diversity_requirements: {}
+    quality_checks: []
+    training_steps: 0
+    seed: 200
+  - &trained_arm
+    id: pi05_spatial_targeted_v2
+    experiment_id: exp_pi05_libero_spatial_boundary_v2
+    hypothesis_id: evidence_weighted_targeting_reduces_dilution
+    arm: targeted
+    source: simulation
+    trajectory_count: 8
+    target_bounds: *target_bounds
+    sampling_strategy: evidence_weighted_mixture
+    target_fraction: 0.75
+    diversity_requirements: {init_state_index: 4, camera_x: 3, camera_yaw_deg: 3, occlusion: 3, visual_distractors: 3}
+    quality_checks: [finite_actions, task_success, parameter_coverage, provenance_complete]
+    training_steps: 100
+    seed: 201
+  - <<: *trained_arm
+    id: pi05_spatial_random_v2
+    arm: random
+    sampling_strategy: full_uniform
+    seed: 202
+  - <<: *trained_arm
+    id: pi05_spatial_original_v2
+    arm: original_distribution
+    sampling_strategy: canonical
+    seed: 203
+  - <<: *trained_arm
+    id: pi05_spatial_oracle_v2
+    arm: oracle_targeted
+    sampling_strategy: center
+    seed: 204
+cost_envelope:
+  cumulative_su_before_campaign: 152.904165552
+  expected_additional_su_range: [55, 100]
+  expected_cumulative_su_range: [207.9, 252.9]
+  pbs_hard_reservation_ceiling_su: 480
+  note: Expected cost uses measured data generation, training, and 60-rollout evaluation times; the hard ceiling assumes bounded jobs consume full requested walltime.
+evaluation_plan:
+  target_trials: 40
+  regression_trials: 20
+  target_per_seed: 4
+  regression_per_suite: 5
+  paired_across_arms: true

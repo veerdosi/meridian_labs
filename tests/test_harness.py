@@ -2,10 +2,12 @@ import json
 from pathlib import Path
 
 from meridian.adapters.surrogate import BoundarySurrogateAdapter
+from meridian.intervention import sample_axis_value
 from meridian.models import (
     Budget,
     ExperimentSpec,
     InterventionArm,
+    InterventionSamplingStrategy,
     ParameterAxis,
     ParameterSpace,
     ResourceCost,
@@ -86,3 +88,25 @@ def test_evidence_correlations_are_json_safe_for_constant_outcomes(tmp_path: Pat
     output = evidence_package(value, build_capability_map(value, rollouts), rollouts, tmp_path / "evidence.json")
     payload = json.loads(output.read_text(), parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token)))
     assert set(payload["axis_success_correlations"].values()) == {0.0}
+
+
+def test_evidence_weighted_sampling_mixes_target_and_broad_coverage() -> None:
+    import numpy as np
+
+    rng = np.random.default_rng(12)
+    values = [
+        sample_axis_value(
+            strategy=InterventionSamplingStrategy.EVIDENCE_WEIGHTED_MIXTURE,
+            rng=rng,
+            axis_low=-1,
+            axis_high=1,
+            target_low=0.4,
+            target_high=0.6,
+            canonical=0,
+            target_fraction=0.75,
+        )
+        for _ in range(200)
+    ]
+    target_count = sum(0.4 <= value <= 0.6 for value in values)
+    assert 125 <= target_count <= 180
+    assert any(value < 0.4 or value > 0.6 for value in values)

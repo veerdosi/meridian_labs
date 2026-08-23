@@ -15,10 +15,46 @@ from meridian.models import (
     ExperimentSpec,
     Hypothesis,
     InterventionArm,
+    InterventionSamplingStrategy,
     InterventionSpec,
     ResourceCost,
 )
 from meridian.search import _wilson
+
+
+def sample_axis_value(
+    *,
+    strategy: InterventionSamplingStrategy,
+    rng: np.random.Generator,
+    axis_low: float,
+    axis_high: float,
+    target_low: float,
+    target_high: float,
+    canonical: float,
+    target_fraction: float = 0.75,
+    use_target_component: bool | None = None,
+) -> float:
+    """Sample one intervention axis using an explicit, auditable coverage strategy."""
+    if strategy == InterventionSamplingStrategy.CANONICAL:
+        return canonical
+    if strategy == InterventionSamplingStrategy.CENTER:
+        return (target_low + target_high) / 2
+    if strategy == InterventionSamplingStrategy.FULL_UNIFORM:
+        return float(rng.uniform(axis_low, axis_high))
+    if strategy == InterventionSamplingStrategy.BOUNDS_UNIFORM:
+        return float(rng.uniform(target_low, target_high))
+    if strategy == InterventionSamplingStrategy.EVIDENCE_WEIGHTED_MIXTURE:
+        target_component = (
+            rng.random() < target_fraction
+            if use_target_component is None
+            else use_target_component
+        )
+        if not target_component:
+            return float(rng.uniform(axis_low, axis_high))
+        center = (target_low + target_high) / 2
+        sigma = max((target_high - target_low) / 6, np.finfo(float).eps)
+        return float(np.clip(rng.normal(center, sigma), target_low, target_high))
+    raise ValueError(f"sampling strategy must be resolved before sampling: {strategy}")
 
 
 def make_intervention_arms(

@@ -141,6 +141,15 @@ class InterventionArm(StrEnum):
     NO_DATA_FIX = "no_data_fix"
 
 
+class InterventionSamplingStrategy(StrEnum):
+    ARM_DEFAULT = "arm_default"
+    BOUNDS_UNIFORM = "bounds_uniform"
+    EVIDENCE_WEIGHTED_MIXTURE = "evidence_weighted_mixture"
+    CENTER = "center"
+    FULL_UNIFORM = "full_uniform"
+    CANONICAL = "canonical"
+
+
 class InterventionSpec(BaseModel):
     id: str = Field(default_factory=lambda: new_id("intervention"))
     experiment_id: str
@@ -149,6 +158,8 @@ class InterventionSpec(BaseModel):
     source: Literal["simulation", "none"] = "simulation"
     trajectory_count: int = Field(ge=0)
     target_bounds: dict[str, tuple[float, float]]
+    sampling_strategy: InterventionSamplingStrategy = InterventionSamplingStrategy.ARM_DEFAULT
+    target_fraction: float = Field(default=0.75, ge=0, le=1)
     diversity_requirements: dict[str, int]
     quality_checks: list[str]
     expected_gain: float | None = None
