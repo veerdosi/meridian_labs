@@ -2,7 +2,7 @@ from pathlib import Path
 
 from meridian.adapters.surrogate import BoundarySurrogateAdapter
 from meridian.models import Budget, ExperimentSpec, ParameterAxis, ParameterSpace
-from meridian.search import AdaptiveFailureSearch, build_capability_map
+from meridian.search import AdaptiveFailureSearch, build_capability_map, propose_parameter_points
 from meridian.store import ExperimentStore
 
 
@@ -44,3 +44,6 @@ def test_adaptive_search_builds_boundary_map(tmp_path: Path) -> None:
     assert any(not r.success for r in rollouts)
     assert capability_map.failure_clusters
     assert capability_map.boundary_pairs
+    proposals = propose_parameter_points(value, rollouts, count=4, seed=9)
+    assert len(proposals) == 4
+    assert all(set(point) == {"camera_yaw", "occlusion", "object_x"} for point in proposals)

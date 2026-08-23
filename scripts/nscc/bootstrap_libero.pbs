@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=01:00:00
+#PBS -N meridian-libero-env
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+OPENPI_ROOT="$ROOT/src/openpi"
+export UV_CACHE_DIR="$ROOT/cache/uv-libero"
+export UV_LINK_MODE=copy
+export PATH="$ROOT/bin:$PATH"
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
+export MUJOCO_GL=egl
+
+mkdir -p "$ROOT/envs" "$UV_CACHE_DIR" "$LIBERO_CONFIG_PATH" "$ROOT/jobs/logs"
+module load python/3.8.13
+PYTHON_BIN=$(command -v python3)
+uv venv --python "$PYTHON_BIN" "$ROOT/envs/libero"
+grep -Ev '^(evdev|pynput)==' "$OPENPI_ROOT/examples/libero/requirements.txt" > "$ROOT/config/libero-headless-requirements.txt"
+uv pip sync \
+  --python "$ROOT/envs/libero/bin/python" \
+  "$ROOT/config/libero-headless-requirements.txt" \
+  "$OPENPI_ROOT/third_party/libero/requirements.txt" \
+  "$OPENPI_ROOT/packages/openpi-client/pyproject.toml" \
+  --extra-index-url https://download.pytorch.org/whl/cu113 \
+  --index-strategy=unsafe-best-match
+
+cat > "$LIBERO_CONFIG_PATH/config.yaml" <<EOF
+benchmark_root: $OPENPI_ROOT/third_party/libero/libero/libero
+bddl_files: $OPENPI_ROOT/third_party/libero/libero/libero/bddl_files
+init_states: $OPENPI_ROOT/third_party/libero/libero/libero/init_files
+datasets: $ROOT/datasets/libero
+assets: $OPENPI_ROOT/third_party/libero/libero/libero/assets
+EOF
+
+"$ROOT/envs/libero/bin/python" - <<'PY'
+from libero.libero import benchmark
+import mujoco
+
+suite = benchmark.get_benchmark_dict()["libero_spatial"]()
+task = suite.get_task(0)
+print("mujoco", mujoco.__version__, "task", task.language, "dependency_import=ok")
+PY

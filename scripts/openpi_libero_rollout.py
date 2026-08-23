@@ -113,7 +113,7 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
         init_index = int(plan.get("init_state_index", seed % len(initial_states)))
         obs = env.set_init_state(initial_states[init_index])
         apply_sim_parameters(env, plan)
-        obs = env._get_observations()
+        obs = env.regenerate_obs_from_state(env.get_sim_state())
         action_plan: collections.deque = collections.deque()
         wait_steps = int(plan.get("wait_steps", 10))
         replan_steps = int(plan.get("replan_steps", 5))

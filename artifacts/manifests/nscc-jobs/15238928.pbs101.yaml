@@ -1,0 +1,13 @@
+job_id: 15238928.pbs101
+purpose: libero_environment_bootstrap
+queue: qdev
+project: personal-veer001
+requested: {ncpus: 4, ngpus: 0, walltime_seconds: 3600}
+actual:
+  walltime_seconds: 26
+  cpu_core_hours: 0.0288888889
+  su_estimated: 0.0288888889
+exit_status: 1
+result: failed
+cause: legacy evdev wheel has malformed metadata under uv
+decision: remove unused pynput and evdev desktop input hooks from the headless simulator environment

@@ -26,7 +26,8 @@ printf 'openpi_revision=15a9616a00943ada6c20a0f158e3adb39df2ccac\n'
 nvidia-smi --query-gpu=name,uuid,driver_version,memory.total --format=csv,noheader
 
 cd "$OPENPI_ROOT"
-uv sync --frozen --no-dev --no-install-package rerun-sdk
+uv sync --frozen --no-dev --no-install-package rerun-sdk --no-install-package lerobot
+uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" --no-deps -e "$ROOT/src/lerobot"
 
 "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PY'
 import jax

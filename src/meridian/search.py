@@ -20,6 +20,48 @@ def _wilson(successes: int, count: int, z: float = 1.96) -> tuple[float, float]:
     return (max(0.0, center - radius), min(1.0, center + radius))
 
 
+def propose_parameter_points(
+    spec: ExperimentSpec, prior: list[RolloutRecord], count: int, seed: int
+) -> list[dict[str, float]]:
+    """Propose a scheduler-friendly batch, adapting toward nearby opposing outcomes."""
+    rng = np.random.default_rng(seed)
+
+    def random_point() -> dict[str, float]:
+        return {
+            axis.name: float(rng.uniform(axis.low, axis.high)) for axis in spec.parameter_space.axes
+        }
+
+    def normalized(record: RolloutRecord) -> np.ndarray:
+        return np.asarray(
+            [
+                (record.parameters[axis.name] - axis.low) / (axis.high - axis.low)
+                for axis in spec.parameter_space.axes
+            ]
+        )
+
+    points = []
+    working = list(prior)
+    successes = [record for record in working if record.success]
+    failures = [record for record in working if not record.success]
+    for _ in range(count):
+        if not successes or not failures:
+            points.append(random_point())
+            continue
+        pairs = (
+            (float(np.linalg.norm(normalized(success) - normalized(failure))), success, failure)
+            for success in successes
+            for failure in failures
+        )
+        _, success, failure = min(pairs, key=lambda item: item[0])
+        point = {}
+        for index, axis in enumerate(spec.parameter_space.axes):
+            midpoint = (success.parameters[axis.name] + failure.parameters[axis.name]) / 2
+            jitter = rng.normal(0, 0.035) * (axis.high - axis.low)
+            point[axis.name] = float(np.clip(midpoint + jitter, axis.low, axis.high))
+        points.append(point)
+    return points
+
+
 class AdaptiveFailureSearch:
     def __init__(self, spec: ExperimentSpec, adapter: PolicyAdapter, store: ExperimentStore):
         self.spec = spec

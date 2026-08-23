@@ -1,0 +1,15 @@
+job_id: 15238931.pbs101
+purpose: libero_environment_bootstrap_and_cpu_render_probe
+queue: qdev
+project: personal-veer001
+requested: {ncpus: 4, ngpus: 0, walltime_seconds: 3600}
+actual:
+  walltime_seconds: 299
+  cpu_core_hours: 0.3322222222
+  su_estimated: 0.3322222222
+exit_status: 1
+result: partial
+successful_stage: pinned LIBERO and MuJoCo environment installed on scratch
+failed_stage: CPU OSMesa render probe
+cause: ASPIRE 2A compute image does not expose the OSMesa GL backend
+decision: validate the official EGL path on an A100 in Gate 0
