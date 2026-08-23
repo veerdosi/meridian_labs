@@ -1,0 +1,31 @@
+job_id: 15240802.pbs101
+purpose: generate_matched_pi05_spatial_intervention_v2_datasets
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 1800}
+actual:
+  walltime_seconds: 311
+  gpu_hours: 0.0863888889
+  su_estimated: 5.5288888889
+  cpu_time_seconds: 291
+  peak_host_memory_kb: 1921604
+exit_status: 0
+result:
+  arms: [targeted, random, original_distribution, oracle_targeted]
+  trajectories_per_arm: 8
+  success_per_arm: 8
+  unique_source_trajectories_per_arm: 8
+  provenance_hashes_per_arm: 8
+  quality_veto: passed
+  targeted_sampling_components: {evidence_weighted_target: 6, broad: 2}
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/intervention-data/pi05-spatial-intervention-v2/15240802.pbs101
+  external_ssd_path: artifacts/nscc/intervention-data/pi05-spatial-intervention-v2/15240802.pbs101
+  bytes: 410714116
+  external_copy_verified_by: rsync_size_only_dry_run
+  rollout_jsonl_sha256:
+    targeted: 854d5cd0862fa517f4e12187d1c2f3cf3dbd36712da78d1be25c9e6919d9a2e4
+    random: 4525ef496f30b89129469fac419075d6b2d02bf8f4bdda6006fc4908bae1aae4
+    original_distribution: dcb8ffdd82106c775588ff95daac2f9c0032dd04d99fc4e0d503059c220ff503
+    oracle_targeted: 60895f1fc853bb7fc1f7e635f88a9a356651a3b9d82b353931896074346e93b1
+intervention_spec: artifacts/manifests/interventions/pi05-spatial-campaign-v2.yaml
