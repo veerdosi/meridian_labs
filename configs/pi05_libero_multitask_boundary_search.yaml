@@ -1,6 +1,8 @@
 id: pi05-libero-multitask-boundary-search-v1
-status: preregistered_contingency
-trigger: pi05-spatial-intervention-v2 negative sequential gate
+status: activated_user_directed_confirmation
+trigger: user requested a harder cross-suite confirmation after the positive-but-random-inconclusive pi05-spatial-intervention-v2 gate
+activated_at_utc: 2026-08-23T19:15:45Z
+activation_policy: Run the preregistered screen unchanged; screening may nominate validation candidates but cannot select the final boundary.
 checkpoint: gs://openpi-assets/checkpoints/pi05_libero
 suites:
   - {name: libero_spatial, task_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}

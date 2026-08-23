@@ -1,0 +1,36 @@
+campaign_id: pi05-multitask-boundary-screen-v1
+status: locked_pre_submission
+locked_at: 2026-08-23T19:15:45Z
+activation: user_directed_harder_task_confirmation
+scientific_context: The Spatial v2 gate was positive by its locked point rule, but targeted versus random was not statistically decisive and targeted reached a ceiling.
+checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+screen:
+  suites: [libero_spatial, libero_object, libero_goal, libero_10]
+  tasks_per_suite: 10
+  profiles: [canonical, viewpoint, visual, compound_view_visual]
+  repeats_per_profile: 1
+  total_rollouts: 160
+  paired_initial_state_rule: task_id_times_5
+  canonical_replan_steps: 5
+  action_noise: 0.0
+  plan_directory: configs/plans/pi05-multitask-boundary-screen-v1
+  plan_sha256:
+    libero_spatial: 903c9b1e45690fce79487edee6044e39be700da16633c812d4614d891c0b6454
+    libero_object: b4602c6d6e5488bbede537ce7ccba5a0e7d44775525b9cf4993f2069aa14d303
+    libero_goal: 2a96a38f222eae4d0ddfcc7b3e0b95740134dc6109ca83095e7f4c0409288575
+    libero_10: d11bb8d2f7c3c97f82e461f41734bde5c8606ec18334f49b46f55fe64be53f9e
+selection_policy:
+  stage_1_use: nominate up to eight candidates for repeated validation; do not select a final task
+  validation_conditions: [canonical, candidate_profile, candidate_profile_canonical_control]
+  validation_repeats_per_condition: 5
+  criteria: [repeatability, intervention_headroom, canonical_control_persistence, coverage_specificity, low_random_coverage]
+  prohibition: A task is not selectable from screening failures alone.
+confirmation_policy: After validation, preregister an equal-dose targeted/random/original-distribution experiment with untouched target and regression holdouts.
+pbs_state_at_lock:
+  active_jobs: []
+  checked_at: 2026-08-23T19:15:45Z
+cost_envelope:
+  screen_expected_su: [25, 60]
+  validation_expected_su: [15, 35]
+  accounting_rule: Record actual PBS walltime and charged resources for successes, failures, and cancellations.
+jobs: {}
