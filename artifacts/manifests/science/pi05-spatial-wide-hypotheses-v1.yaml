@@ -1,0 +1,46 @@
+experiment_id: exp_pi05_libero_spatial_boundary_v1
+evidence_packet: artifacts/analysis/pi05-spatial-combined-v2/scientist_evidence.json
+reviewed_rollouts: 64
+observed_successes: 62
+observed_failures: 2
+selected_for_testing: compound_visual_coverage
+hypotheses:
+  - id: compound_visual_coverage
+    kind: data_coverage
+    priority: 0.80
+    statement: pi05_libero lacks coverage for compound viewpoint and observation corruptions even though it tolerates each initial-envelope factor.
+    evidence_for:
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0022
+    discriminating_test: compare exact, canonical, view-only, visual-only, and view-plus-visual probes at the same initial states; repeat the compound profiles across image-noise seeds.
+    predicted_result: compound view-plus-visual probes fail more often than either isolated family, and targeted simulator data later outperforms equal-size random and canonical data.
+  - id: camera_geometry_configuration
+    kind: camera_task_config
+    priority: 0.60
+    statement: camera geometry, rather than missing demonstrations, makes the observation inconsistent with the released policy configuration.
+    evidence_for:
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0022
+    discriminating_test: canonicalize viewpoint while preserving visual corruption and initial state, then test viewpoint alone.
+    predicted_result: canonical viewpoint immediately restores success while view-only probes reproduce failures without training.
+  - id: inference_control_recovery
+    kind: inference_control
+    priority: 0.40
+    statement: action noise and replanning cadence prevent recovery under otherwise tolerable observations.
+    evidence_for:
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0022
+    discriminating_test: preserve the failed view and visual profile but remove action noise and set canonical replanning; separately apply control stress under canonical observations.
+    predicted_result: canonical control rescues view-plus-visual probes and control-only probes fail at the same initial states.
+  - id: stochastic_occluder_placement
+    kind: simulator_stochasticity
+    priority: 0.35
+    statement: failures are caused by unlucky seed-specific occluder or distractor placement rather than a stable parameter region.
+    evidence_for:
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+      - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0022
+    discriminating_test: reproduce the exact seeds and then repeat identical scalar profiles across four new seeds per failure.
+    predicted_result: exact seeds reproduce but most new corruption placements succeed, implying a spatial placement variable must be added before intervention selection.
+decision_rule:
+  select_data_intervention_only_if: failures reproduce beyond one exact seed and are not eliminated by a no-training control or canonical-camera correction
+  otherwise: expand the parameter schema or select a no-data configuration intervention

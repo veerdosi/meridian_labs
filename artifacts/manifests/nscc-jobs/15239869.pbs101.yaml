@@ -1,0 +1,34 @@
+job_id: 15239869.pbs101
+purpose: pi05_libero_spatial_wide_envelope_failure_search
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 7200}
+actual:
+  walltime_seconds: 536
+  gpu_hours: 0.1488888889
+  su_estimated: 9.5288888896
+  cpu_time_seconds: 582
+  peak_host_memory_kb: 8217592
+exit_status: 0
+result:
+  run_id: pi05-spatial-wide-v1
+  plans: 24
+  completed: 24
+  successes: 22
+  failures: 2
+  success_rate: 0.9166666667
+policy:
+  config: pi05_libero
+  checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+task: {suite: libero_spatial, task_id: 0}
+failure_rollout_ids:
+  - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0002
+  - exp_pi05_libero_spatial_boundary_v1-batch3000-episode0022
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-spatial-wide-v1/15239869.pbs101
+  external_ssd_path: artifacts/nscc/evaluations/pi05-spatial-wide-v1/15239869.pbs101
+  bytes: 349035422
+  rollouts_jsonl_sha256: 3359f635a6a2063eea2246479afdd2ab122911e163e6b7189654573e1d0fd2ea
+scientist_review:
+  hypotheses: artifacts/manifests/science/pi05-spatial-wide-hypotheses-v1.yaml
+  next_action: run matched exact/canonical/view/visual/control/repeat probes before selecting an intervention
