@@ -24,6 +24,8 @@ training:
   checkpoint_external_ssd: artifacts/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-random/99
   checkpoint_files: 33
   checkpoint_backup_verified: rsync_size_and_mtime_match
+  checkpoint_external_ssd_removed_at: 2026-08-23T19:37:00Z
+  checkpoint_removal_reason: Superseded v1 random arm; evaluation outcomes and provenance retained.
 result:
   target: {successes: 19, trials: 20, success_rate: 0.95, wilson_95: [0.7638641065, 0.9911187806]}
   target_gain_over_released: 0.50

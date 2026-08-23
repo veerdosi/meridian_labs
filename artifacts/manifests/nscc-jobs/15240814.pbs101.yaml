@@ -8,7 +8,16 @@ phases: {conversion_seconds: 254, training_seconds: 230, server_start_seconds: 1
 exit_status: 0
 arm: targeted
 dataset: {repo_id: meridian/pi05-spatial-intervention-v2_targeted, trajectories: 8, sampling: evidence_weighted_6_target_2_broad}
-training: {config: meridian_pi05_libero, steps: 100, method: LoRA, starting_checkpoint: 'gs://openpi-assets/checkpoints/pi05_libero', checkpoint: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99}
+training:
+  config: meridian_pi05_libero
+  steps: 100
+  method: LoRA
+  starting_checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+  checkpoint: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99
+  checkpoint_external_ssd: artifacts/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99
+  checkpoint_files: 31
+  checkpoint_file_bytes: 9381131059
+  checkpoint_backup_verified: rsync_size_only_dry_run
 result:
   target: {successes: 40, trials: 40, success_rate: 1.0, wilson_95: [0.9123754607, 1.0]}
   regression: {successes: 20, trials: 20, success_rate: 1.0, delta_from_released: 0.05}

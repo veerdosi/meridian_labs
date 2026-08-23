@@ -32,6 +32,8 @@ checkpoint:
   files: 30
   bytes: 9226268027
   backup_verified: rsync_size_and_mtime_match
+  external_ssd_copy_removed_at: 2026-08-23T19:37:00Z
+  removal_reason: Obsolete Gate-0 mechanism-check checkpoint; compact manifest and result retained.
 adapted_rollout:
   success: true
   steps: 138
