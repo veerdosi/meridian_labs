@@ -52,7 +52,7 @@ def summarize(rows: list[dict], decision: dict, campaign: dict) -> dict:
                 "wilson_95": _wilson(successes, len(members)),
             }
             outcomes[condition] = {
-                (int(row["parameters"]["seed"]), float(row["parameters"]["init_state_index"])): bool(
+                (int(row["seed"]), float(row["parameters"]["init_state_index"])): bool(
                     row["success"]
                 )
                 for row in members

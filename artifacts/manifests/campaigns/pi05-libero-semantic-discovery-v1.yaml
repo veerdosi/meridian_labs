@@ -1,5 +1,5 @@
 campaign_id: pi05-libero-semantic-discovery-v1
-status: discovery_complete_validation_locked
+status: validation_complete_boundary_selected
 locked_at_utc: 2026-08-23T19:42:02Z
 objective: Semantic, benchmark-informed discovery across all locally compatible LIBERO tasks, including LIBERO-90, with untouched task/seed confirmation reserve.
 predecessor:
@@ -85,7 +85,7 @@ validation_execution:
   plan: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
   plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
   rollouts: 120
-  state: retry_3_submitted
+  state: completed
   job_id: 15243295.pbs101
   requested_walltime: 02:00:00
   requested_ngpus: 1
@@ -115,14 +115,42 @@ validation_execution:
       classification: repeated_policy_server_startup_timeout
       scientific_use: none
     - job_id: 15243295.pbs101
-      state: submitted
+      final_state: completed
       plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
       requested_walltime: 02:00:00
       requested_ngpus: 1
       checkpoint_dir: /scratch/users/ntu/veer001/meridian_labs/cache/openpi/openpi-assets/checkpoints/pi05_libero
       readiness_timeout_seconds: 900
       outcomes_expected: 120
+      outcomes_written: 120
+      result_sha256: 54d91c9b66eeed6e6e7fddd03deae33b1c38fb457cb3596cf68db07cb2cf6804
+      exit_status: 0
+      actual_walltime_seconds: 3433
+      actual_su: 61.0311111111
+      node: x1000c2s6b0n1
       scientific_plan_changed: false
+  decision_artifact: artifacts/results/pi05-semantic-discovery-v1/validation-decision.json
+  decision_sha256: 56db8d2fb0103f463b3dfeaec338ea21472f4b164903540234f43aeef09b8a8a
+  uncertainty_and_pairs_artifact: artifacts/results/pi05-semantic-discovery-v1/validation-summary.json
+  uncertainty_and_pairs_sha256: 60199566054942d47652afa9123abf3312c59fb74c3c3578163959ba8f67cd0f
+  eligible_candidates: 5
+  selected_boundary:
+    task_suite: libero_10
+    task_id: 3
+    task_name: KITCHEN_SCENE4_put_the_black_bowl_in_the_bottom_drawer_of_the_cabinet_and_close_it
+    language: put the black bowl in the bottom drawer of the cabinet and close it
+    semantic_capability: articulated_sequence
+    canonical_successes: 5
+    canonical_trials: 5
+    compound_successes: 0
+    compound_trials: 5
+    canonical_control_failure_rate: 1.0
+    intervention_headroom: 1.0
+    weighted_score: 0.845
+  selection_rule_applied: highest-ranked eligible boundary; no discretionary override
+  benchmark_results_used_as_confirmation_evidence: false
+  training_permitted_after_gate: true
+  training_launched_by_this_campaign: false
 accounting:
-  campaign_su_to_date: 34.6311111111
-  cumulative_measured_su: 290.024165552
+  campaign_su_to_date: 95.6622222222
+  cumulative_measured_su: 351.0552766631

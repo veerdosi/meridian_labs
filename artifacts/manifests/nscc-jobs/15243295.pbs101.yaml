@@ -1,0 +1,27 @@
+job_id: 15243295.pbs101
+campaign: pi05-libero-semantic-validation-v1
+purpose: Repeated canonical-control validation of six locked semantic boundary nominees.
+scientific_plan:
+  path: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
+  sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
+  changed_from_failed_attempts: false
+checkpoint:
+  path: /scratch/users/ntu/veer001/meridian_labs/cache/openpi/openpi-assets/checkpoints/pi05_libero
+pbs:
+  queue: gdev
+  requested_walltime_seconds: 7200
+  requested_ngpus: 1
+  requested_ncpus: 16
+  node: x1000c2s6b0n1
+  final_state: F
+  exit_status: 0
+  actual_walltime_seconds: 3433
+  gpu_hours: 0.9536111111
+  actual_su: 61.0311111111
+  accounting_source: pbs_qstat_finished_record
+execution:
+  readiness_timeout_seconds: 900
+  outcomes_expected: 120
+  outcomes_written: 120
+  result_sha256: 54d91c9b66eeed6e6e7fddd03deae33b1c38fb457cb3596cf68db07cb2cf6804
+  disposition: Complete scientific result retained and scored under the precommitted rule.
