@@ -20,6 +20,9 @@ module load python/3.8.13
 export LIBERO_CONFIG_PATH="$ROOT/config/libero"
 export PYTHONPATH="$ROOT/harness/src:$ROOT/harness:$OPENPI_ROOT/third_party/libero"
 export PYTHONUNBUFFERED=1
+# LIBERO's default macro forces EGL on Linux even when ControlEnv never renders.
+# GLX selects the lazy GLFW import path, so CPU-only state inspection needs no GPU display.
+export MUJOCO_GL=glx
 
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/inventory_libero_initial_states.py" \
   --config "$CONFIG_FILE" \
