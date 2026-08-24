@@ -1,5 +1,5 @@
 campaign_id: pi05-libero-semantic-discovery-v1
-status: discovery_submitted
+status: discovery_complete_validation_locked
 locked_at_utc: 2026-08-23T19:42:02Z
 objective: Semantic, benchmark-informed discovery across all locally compatible LIBERO tasks, including LIBERO-90, with untouched task/seed confirmation reserve.
 predecessor:
@@ -67,3 +67,25 @@ jobs:
     requested_ngpus: 1
     plan_sha256: fbb3d31475e83762d0a6b93c4b90fda9779633d5111f9d33eb04fd7288a7aa20
     state_at_submission: queued
+    final_state: completed
+    exit_status: 0
+    actual_walltime_seconds: 1345
+    actual_su: 23.9111111111
+    rollouts: 56
+    result_sha256: 937e34d723b5e7f6128ea26f87b0b85f819e8a68ca4c8d736000336f8f4387c1
+discovery_result:
+  summary: artifacts/results/pi05-semantic-discovery-v1/discovery-summary.json
+  summary_sha256: 5c94d303e877fc41b09041e1d08da41a8f48bb5f150146a3e45469ca60196de0
+  screen_qualifiers: 10
+  locked_validation_nominees: 6
+  training_permitted: false
+validation_execution:
+  candidates: configs/plans/pi05-semantic-validation-v1/candidates.jsonl
+  candidates_sha256: 597fe3bd8a2b35c2560d708311f0d91fcb820bb918ba6bb2e4988baa52db6f35
+  plan: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
+  plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
+  rollouts: 120
+  state: locked_pre_submission
+accounting:
+  campaign_su_to_date: 23.9111111111
+  cumulative_measured_su: 279.304165552

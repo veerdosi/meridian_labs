@@ -1,0 +1,21 @@
+job_id: 15240986.pbs101
+purpose: semantic_libero_wide_discovery_screen
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 3600}
+actual:
+  walltime_seconds: 1345
+  gpu_hours: 0.3736111111
+  su_estimated: 23.9111111111
+exit_status: 0
+result: completed
+plans:
+  path: configs/plans/pi05-semantic-discovery-v1/discovery_plans.jsonl
+  sha256: fbb3d31475e83762d0a6b93c4b90fda9779633d5111f9d33eb04fd7288a7aa20
+  tasks: 28
+  rollouts: 56
+artifacts:
+  cluster_path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-semantic-discovery-v1/15240986.pbs101
+  local_results: artifacts/results/pi05-semantic-discovery-v1/raw/15240986-rollouts.jsonl
+  rollouts_jsonl_sha256: 937e34d723b5e7f6128ea26f87b0b85f819e8a68ca4c8d736000336f8f4387c1
+selection_status: Discovery evidence only; six nominees require locked repeated validation before training.
