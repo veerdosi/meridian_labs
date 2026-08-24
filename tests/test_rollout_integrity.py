@@ -23,7 +23,10 @@ def test_plan_validation_rejects_duplicates_and_legacy_interventions() -> None:
         validate_plans([valid_plan(), valid_plan()])
     with pytest.raises(ValueError, match="intervention fields"):
         validate_plans([valid_plan(camera_x=0.1)])
-    assert validate_plans([valid_plan(camera_x=0.0)]) == [valid_plan(camera_x=0.0)]
+    with pytest.raises(ValueError, match="intervention fields"):
+        validate_plans([valid_plan(camera_x=0.0)])
+    with pytest.raises(ValueError, match="unknown fields"):
+        validate_plans([valid_plan(typo_field=1)])
 
 
 def test_hash_is_independent_of_mapping_order() -> None:

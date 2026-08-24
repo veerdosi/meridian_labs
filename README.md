@@ -30,6 +30,12 @@ implementation pass a final review.
 Superseded campaign details are intentionally absent from the active tree. The concise history and
 recovery reference are in [`artifacts/LEGACY_CAMPAIGNS.md`](artifacts/LEGACY_CAMPAIGNS.md).
 
+The active protocol is [`configs/physical_boundary_v1.yaml`](configs/physical_boundary_v1.yaml).
+It screens balanced natural LIBERO initial states, records exact BDDL subgoal progress plus physical
+telemetry, rejects failures fixed by canonical replanning controls, and permits only unique successful
+neighbor trajectories for nested 4/8-dose targeted comparisons. Every selector emits
+`training_authorized=false`; the final campaign requires an explicit scientific review before launch.
+
 ## NSCC
 
 Cluster jobs and accounting helpers are under `scripts/nscc/`; infrastructure and cost conventions

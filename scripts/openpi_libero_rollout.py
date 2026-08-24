@@ -20,7 +20,11 @@ from meridian.recording import write_evidence_videos
 from meridian.rollout_integrity import (
     canonical_sha256,
     contact_pairs,
+    evaluate_goal_predicates,
     file_sha256,
+    free_joint_positions,
+    goal_argument_positions,
+    goal_metadata,
     pad_contact_pairs,
     reserve_results_path,
     simulator_metadata,
@@ -67,6 +71,7 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
     episode_dir.mkdir(parents=True, exist_ok=True)
     clean_images, policy_images, wrist_images, states, actions = [], [], [], [], []
     sim_qpos, sim_qvel, contact_counts, sim_contact_pairs = [], [], [], []
+    goal_predicates_before, goal_predicates_after, goal_positions_after = [], [], []
     done, failure_phase, inference_seconds = False, "timeout", 0.0
     try:
         env.reset()
@@ -75,9 +80,13 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
         obs = env.set_init_state(initial_states[init_index])
         obs = env.regenerate_obs_from_state(env.get_sim_state())
         initial_state_hash = simulator_state_sha256(env.sim.data.qpos, env.sim.data.qvel)
+        initial_objects = free_joint_positions(env.sim)
         initial_qpos = np.array(env.sim.data.qpos, copy=True)
         initial_qvel = np.array(env.sim.data.qvel, copy=True)
         sim_schema = simulator_metadata(env.sim)
+        goal_schema = goal_metadata(env)
+        sim_schema["goal_predicates"] = goal_schema["predicates"]
+        sim_schema["goal_arguments"] = goal_schema["arguments"]
         action_plan: collections.deque = collections.deque()
         wait_steps = int(plan.get("wait_steps", 10))
         replan_steps = int(plan.get("replan_steps", 5))
@@ -119,7 +128,16 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             sim_qvel.append(np.array(env.sim.data.qvel, copy=True))
             contact_counts.append(int(env.sim.data.ncon))
             sim_contact_pairs.append(contact_pairs(env.sim))
+            goal_predicates_before.append(
+                evaluate_goal_predicates(env, goal_schema["predicates"])
+            )
             obs, _, done, _ = env.step(action.tolist())
+            goal_predicates_after.append(
+                evaluate_goal_predicates(env, goal_schema["predicates"])
+            )
+            goal_positions_after.append(
+                goal_argument_positions(env, goal_schema["arguments"])
+            )
             if done:
                 failure_phase = "complete"
                 break
@@ -138,6 +156,9 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             contact_geom_ids=pad_contact_pairs(sim_contact_pairs),
             initial_sim_qpos=initial_qpos,
             initial_sim_qvel=initial_qvel,
+            goal_predicate_satisfied_before=goal_predicates_before,
+            goal_predicate_satisfied_after=goal_predicates_after,
+            goal_argument_positions_after=goal_positions_after,
         )
         videos = (
             write_evidence_videos(
@@ -175,6 +196,8 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             "trace_sha256": file_sha256(trace_path),
             "plan_sha256": canonical_sha256(plan),
             "initial_sim_state_sha256": initial_state_hash,
+            "initial_free_joint_positions": initial_objects,
+            "initial_sim_qpos": [float(value) for value in initial_qpos],
             "simulator_schema": sim_schema,
             "video": videos.get("diagnostic"),
             "videos": videos,

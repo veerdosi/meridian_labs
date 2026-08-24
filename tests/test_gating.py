@@ -1,4 +1,4 @@
-from meridian.gating import evaluate_sequential_gate
+from meridian.gating import evaluate_dose_gate, evaluate_sequential_gate
 
 
 def records(target: list[bool], regression: list[bool]) -> list[dict]:
@@ -49,3 +49,32 @@ def test_gate_requires_regression_safety() -> None:
     )
     assert decision["gate"] == "negative"
     assert decision["targeted_regression_loss"] == 0.5
+
+
+def test_physical_dose_releases_original_only_after_beating_random() -> None:
+    decision = evaluate_dose_gate(
+        baseline=records([False, False, True, True], [True, True]),
+        targeted=records([True, True, True, True], [True, True]),
+        random=records([False, True, True, True], [True, True]),
+        original=None,
+        regression_limit=0.02,
+        dose=4,
+        expected_target=4,
+        expected_regression=2,
+    )
+    assert decision["decision"] == "release_original"
+
+
+def test_physical_medium_dose_stops_when_marginal_gain_saturates() -> None:
+    decision = evaluate_dose_gate(
+        baseline=records([False, False, False, True], [True, True]),
+        targeted=records([True, True, True, True], [True, True]),
+        random=records([False, True, True, True], [True, True]),
+        original=records([False, False, True, True], [True, True]),
+        regression_limit=0.02,
+        dose=8,
+        prior_targeted={"target_successes": 4},
+        expected_target=4,
+        expected_regression=2,
+    )
+    assert decision["decision"] == "select_small_dose"

@@ -114,3 +114,74 @@ def evaluate_sequential_gate(
             else "release_original_then_assess_remaining_oracle_question"
         ),
     }
+
+
+def evaluate_dose_gate(
+    *,
+    baseline: list[dict],
+    targeted: list[dict],
+    random: list[dict],
+    original: list[dict] | None,
+    regression_limit: float,
+    dose: int,
+    prior_targeted: dict | None = None,
+    expected_target: int = 40,
+    expected_regression: int = 20,
+) -> dict:
+    """Apply the predeclared sequential comparison and marginal-dose rule."""
+    arms = {
+        "released_checkpoint": _arm_summary(
+            baseline, expected_target=expected_target, expected_regression=expected_regression
+        ),
+        "targeted": _arm_summary(
+            targeted, expected_target=expected_target, expected_regression=expected_regression
+        ),
+        "random": _arm_summary(
+            random, expected_target=expected_target, expected_regression=expected_regression
+        ),
+    }
+    if original is not None:
+        arms["original_distribution"] = _arm_summary(
+            original, expected_target=expected_target, expected_regression=expected_regression
+        )
+    baseline_summary, targeted_summary = arms["released_checkpoint"], arms["targeted"]
+    regression_loss = baseline_summary["regression_success_rate"] - targeted_summary["regression_success_rate"]
+    paired = {
+        name: _paired_sign_test(targeted_summary["target_outcomes"], arms[name]["target_outcomes"])
+        for name in ("random", "original_distribution")
+        if name in arms
+    }
+    comparisons = {
+        name: targeted_summary["target_successes"] > arms[name]["target_successes"]
+        for name in ("random", "original_distribution")
+        if name in arms
+    }
+    for summary in arms.values():
+        summary.pop("target_outcomes")
+    if regression_loss > regression_limit:
+        decision, rationale = "stop", "targeted regression loss exceeded the locked limit"
+    elif not comparisons["random"]:
+        decision, rationale = "stop", "targeted did not strictly beat equal-dose random data"
+    elif original is None:
+        decision, rationale = "release_original", "targeted beat random; original-distribution comparison remains"
+    elif not comparisons["original_distribution"]:
+        decision, rationale = "stop", "targeted did not strictly beat equal-dose original-distribution data"
+    elif prior_targeted is None:
+        decision, rationale = "run_medium_dose", "small targeted dose beat both controls within the regression limit"
+    else:
+        marginal_successes = targeted_summary["target_successes"] - int(prior_targeted["target_successes"])
+        if marginal_successes >= 2:
+            decision, rationale = "select_medium_dose", "medium dose added at least 2/40 target successes and retained its advantage"
+        else:
+            decision, rationale = "select_small_dose", "medium dose added fewer than 2/40 target successes; the small dose is the stopping point"
+    return {
+        "schema": "meridian-physical-dose-gate-v1",
+        "dose": dose,
+        "decision": decision,
+        "rationale": rationale,
+        "regression_limit": regression_limit,
+        "targeted_regression_loss": regression_loss,
+        "strict_comparisons": comparisons,
+        "paired": paired,
+        "arms": arms,
+    }

@@ -1,0 +1,19 @@
+{
+  "config_sha256": "06f23c1d6fdaf3cd3bb16c6c9960700a5ef82ba0baf4e0852b142c30b8470b72",
+  "schema": "meridian-physical-boundary-v1",
+  "screening_plan_sha256": "cb85749604f8a99e8fc375f4d42fd8513b71d863a244a70a1b9f06bccbdc9473",
+  "screening_trials": 60,
+  "training_authorized": false,
+  "untouched_holdout_init_states": [
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49
+  ]
+}

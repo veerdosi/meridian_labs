@@ -11,6 +11,15 @@ from typing import Any
 import numpy as np
 
 REQUIRED_PLAN_FIELDS = {"id", "task_suite", "task_id", "seed"}
+ALLOWED_PLAN_FIELDS = REQUIRED_PLAN_FIELDS | {
+    "evaluation_suite",
+    "init_state_index",
+    "max_steps",
+    "phase",
+    "repeat",
+    "replan_steps",
+    "wait_steps",
+}
 FORBIDDEN_INTERVENTION_FIELDS = {
     "action_noise",
     "brightness",
@@ -47,20 +56,18 @@ def validate_plans(plans: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         missing = REQUIRED_PLAN_FIELDS - plan.keys()
         if missing:
             raise ValueError(f"plan {index} missing required fields: {sorted(missing)}")
-        identifier = str(plan["id"])
-        if identifier in identifiers:
-            raise ValueError(f"duplicate plan id: {identifier}")
-        identifiers.add(identifier)
-        unsupported = {
-            key
-            for key in FORBIDDEN_INTERVENTION_FIELDS
-            if key in plan and plan[key] not in (None, 0, 0.0, "")
-        }
+        unsupported = {key for key in FORBIDDEN_INTERVENTION_FIELDS if key in plan}
         if unsupported:
             raise ValueError(
                 "legacy or unvalidated intervention fields are forbidden: "
                 f"{sorted(unsupported)}"
             )
+        if unknown := plan.keys() - ALLOWED_PLAN_FIELDS:
+            raise ValueError(f"plan {index} has unknown fields: {sorted(unknown)}")
+        identifier = str(plan["id"])
+        if identifier in identifiers:
+            raise ValueError(f"duplicate plan id: {identifier}")
+        identifiers.add(identifier)
         if int(plan["task_id"]) < 0 or int(plan["seed"]) < 0:
             raise ValueError(f"plan {identifier} has a negative task_id or seed")
         if int(plan.get("init_state_index", 0)) < 0:
@@ -107,6 +114,38 @@ def simulator_metadata(sim: Any) -> dict[str, Any]:
         "nq": int(model.nq),
         "nv": int(model.nv),
     }
+
+
+def free_joint_positions(sim: Any) -> dict[str, list[float]]:
+    """Extract initial xyz positions for physical objects represented by free joints."""
+    model = sim.model
+    positions: dict[str, list[float]] = {}
+    for joint_id, joint_type in enumerate(np.asarray(model.jnt_type)):
+        if int(joint_type) != 0:  # MuJoCo mjJNT_FREE
+            continue
+        address = int(model.jnt_qposadr[joint_id])
+        name = model.joint_id2name(joint_id) or f"joint_{joint_id}"
+        positions[str(name)] = [float(value) for value in sim.data.qpos[address : address + 3]]
+    return positions
+
+
+def goal_metadata(env: Any) -> dict[str, Any]:
+    """Return LIBERO's exact BDDL goal predicates and ordered argument names."""
+    goals = [list(state) for state in env.env.parsed_problem["goal_state"]]
+    arguments = sorted({str(argument) for state in goals for argument in state[1:]})
+    return {"predicates": goals, "arguments": arguments}
+
+
+def evaluate_goal_predicates(env: Any, predicates: Sequence[Sequence[str]]) -> np.ndarray:
+    return np.asarray([bool(env.env._eval_predicate(list(state))) for state in predicates], dtype=bool)
+
+
+def goal_argument_positions(env: Any, arguments: Sequence[str]) -> np.ndarray:
+    positions = []
+    for argument in arguments:
+        state = env.env.object_states_dict[str(argument)]
+        positions.append(np.asarray(state.get_geom_state()["pos"], dtype=np.float64))
+    return np.asarray(positions, dtype=np.float64).reshape(-1, 3)
 
 
 def contact_pairs(sim: Any) -> np.ndarray:
