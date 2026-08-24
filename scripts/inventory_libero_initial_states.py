@@ -8,10 +8,7 @@ import json
 from pathlib import Path
 
 import yaml
-from libero.libero import benchmark, get_libero_path
-from libero.libero.envs.env_wrapper import ControlEnv
 
-from meridian.physical_boundary import validate_protocol_config
 from meridian.rollout_integrity import (
     evaluate_goal_predicates,
     free_joint_positions,
@@ -22,13 +19,36 @@ from meridian.rollout_integrity import (
 )
 
 
+def validate_inventory_config(config: dict) -> None:
+    tasks = [(task["suite"], int(task["task_id"])) for task in config["task_set"]]
+    if not tasks or len(tasks) != len(set(tasks)):
+        raise ValueError("inventory task_set must be non-empty and unique")
+    partition_names = (
+        "screening_init_states",
+        "confirmation_init_states",
+        "training_init_states",
+        "untouched_holdout_init_states",
+    )
+    seen = set()
+    for name in partition_names:
+        values = [int(value) for value in config["partitions"][name]]
+        if len(values) != len(set(values)) or any(value < 0 or value >= 50 for value in values):
+            raise ValueError(f"invalid inventory partition: {name}")
+        if seen.intersection(values):
+            raise ValueError("inventory state partitions overlap")
+        seen.update(values)
+
+
 def main() -> None:
+    from libero.libero import benchmark, get_libero_path
+    from libero.libero.envs.env_wrapper import ControlEnv
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     config = yaml.safe_load(args.config.read_text())
-    validate_protocol_config(config)
+    validate_inventory_config(config)
     reserve_results_path(args.output)
     suites = {name: benchmark.get_benchmark_dict()[name]() for name in {task["suite"] for task in config["task_set"]}}
     with args.output.open("a") as stream:
