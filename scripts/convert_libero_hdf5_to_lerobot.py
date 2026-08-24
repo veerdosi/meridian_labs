@@ -29,6 +29,7 @@ def main() -> None:
     parser.add_argument("--expected-episodes", type=int, required=True)
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text())
+    manifest_sha256 = file_sha256(args.manifest)
     episodes = manifest["episodes"]
     if len(episodes) != args.expected_episodes:
         raise ValueError(f"manifest has {len(episodes)}/{args.expected_episodes} episodes")
@@ -117,6 +118,8 @@ def main() -> None:
             {
                 "schema": "meridian-libero-hdf5-conversion-v1",
                 "repo_id": args.repo_id,
+                "manifest": str(args.manifest),
+                "manifest_sha256": manifest_sha256,
                 "episodes": output_episodes,
                 "image_transform": "rotate_180_to_match_pi05_libero_inference",
             },
@@ -127,4 +130,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -1,0 +1,42 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ncpus=8:mem=64GB
+#PBS -l walltime=01:00:00
+#PBS -N meridian-data-convert
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${MANIFEST:?absolute cluster path to a locked HDF5 episode manifest}"
+: "${DATASET_REPO:?output LeRobot repository ID}"
+: "${EXPECTED_EPISODES:?locked episode count}"
+: "${RUN_ID:?unique conversion run ID}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+RUN_ROOT="$ROOT/artifacts/data-conversion/$RUN_ID/$PBS_JOBID"
+HF_LEROBOT_HOME="$ROOT/datasets/lerobot"
+DATASET_ROOT="$HF_LEROBOT_HOME/$DATASET_REPO"
+export HF_LEROBOT_HOME
+export PYTHONPATH="$ROOT/harness/src:$ROOT/harness"
+export PYTHONUNBUFFERED=1
+mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME"
+
+module load python/3.11.7-gcc11
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_libero_hdf5_to_lerobot.py" \
+  --manifest "$MANIFEST" \
+  --repo-id "$DATASET_REPO" \
+  --output-root "$HF_LEROBOT_HOME" \
+  --expected-episodes "$EXPECTED_EPISODES" | tee "$RUN_ROOT/conversion.json"
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/verify_lerobot_dataset.py" \
+  --repo-id "$DATASET_REPO" \
+  --root "$HF_LEROBOT_HOME" \
+  --expected-episodes "$EXPECTED_EPISODES" \
+  --output "$RUN_ROOT/verification.json" | tee "$RUN_ROOT/verification.log"
+
+printf 'manifest=%s\ndataset_repo=%s\nexpected_episodes=%s\n' \
+  "$MANIFEST" "$DATASET_REPO" "$EXPECTED_EPISODES" > "$RUN_ROOT/inputs.txt"
+find "$DATASET_ROOT/meta" -type f -print0 | sort -z | xargs -0 sha256sum \
+  > "$RUN_ROOT/dataset-meta.sha256"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum \
+  > "$RUN_ROOT/SHA256SUMS"
