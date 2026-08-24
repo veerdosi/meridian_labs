@@ -1,0 +1,22 @@
+job_id: 15242910.pbs101
+purpose: semantic_boundary_repeated_validation_attempt_1
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 7200}
+actual:
+  walltime_seconds: 302
+  gpu_hours: 0.0838888889
+  su_estimated: 5.3688888889
+exit_status: 124
+result: failed_before_rollouts
+failure:
+  classification: transient_policy_server_startup_timeout
+  server_log_bytes: 0
+  readiness_log_bytes: 0
+  validation_outcomes_written: 0
+  scientific_use: none
+plans:
+  path: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
+  sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
+  rollouts: 120
+retry_policy: Retry the identical locked plan without changing candidates, thresholds, or selection rule.
