@@ -19,35 +19,16 @@ The surrogate run exercises adaptive failure search, capability mapping, competi
 targeted/random/original/oracle intervention arms, uncertainty, regression checks, provenance, and
 report generation. It validates plumbing only and must never be reported as evidence about π0.5.
 
-## Real π0.5 result
+## Active real-policy direction
 
-The first controlled NSCC campaign is recorded in
-[`artifacts/results/pi05-spatial-intervention-v1/RESULT.md`](artifacts/results/pi05-spatial-intervention-v1/RESULT.md).
-The harness found a repeatable compound visual/viewpoint boundary and identified short replanning as
-a causal failure amplifier. All four matched 100-step LoRA variants improved over the released
-checkpoint without regression, but the selected narrow targeted arm (80%) did not beat random (95%)
-or original-distribution data (90%). The honest decision is therefore **do not scale the narrow
-targeted intervention**; refine the targeting model and test whether the broad-data gain generalizes.
+The final experiment uses LIBERO's predefined physical initial states, synchronized MuJoCo
+telemetry, and canonical π0.5 control. It must identify a repeatable stage-specific boundary,
+infer the missing data region, and test targeted data against matched random and original-data
+controls at multiple doses. Screening and training are not launched until the locked protocol and
+implementation pass a final review.
 
-The result bundle includes typed evaluations and training runs, paired comparisons, cost accounting,
-the machine-readable decision, and a SQLite experiment store. Rebuild it deterministically from the
-versioned manifests and SSD-backed rollout bundles with:
-
-```bash
-uv run python scripts/record_real_campaign.py \
-  --runs artifacts/manifests/campaigns/pi05-spatial-intervention-v1-runs.yaml \
-  --output artifacts/results/pi05-spatial-intervention-v1
-```
-
-The campaign used 80.14 SU; cumulative measured build and research usage was 152.90 SU.
-
-The sequential dose-8 follow-up is recorded in
-[`artifacts/results/pi05-spatial-intervention-v2/RESULT.md`](artifacts/results/pi05-spatial-intervention-v2/RESULT.md).
-An evidence-weighted 6-target/2-broad mixture reached 40/40 target success and 20/20 regression,
-versus 37/40 for matched random data, 8/40 for original-distribution data, and 21/40 for the
-released checkpoint. The locked targeted-versus-random gate was positive, although its paired
-sign test remains non-decisive (3 wins, 0 losses, p=0.25); targeted versus original was decisive
-(32 wins, 0 losses). Campaign v2 used 102.49 SU and brought cumulative measured usage to 255.39 SU.
+Superseded campaign details are intentionally absent from the active tree. The concise history and
+recovery reference are in [`artifacts/LEGACY_CAMPAIGNS.md`](artifacts/LEGACY_CAMPAIGNS.md).
 
 ## NSCC
 

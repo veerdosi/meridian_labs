@@ -12,6 +12,7 @@ build/
 # Large, reproducible experiment artifacts stay on the external SSD or NSCC.
 artifacts/**
 !artifacts/README.md
+!artifacts/LEGACY_CAMPAIGNS.md
 !artifacts/manifests/
 !artifacts/manifests/**
 !artifacts/results/

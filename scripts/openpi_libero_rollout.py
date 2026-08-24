@@ -5,19 +5,28 @@ from __future__ import annotations
 
 import argparse
 import collections
-import hashlib
 import json
 import math
 import time
 from pathlib import Path
 
-import imageio.v3 as iio
 import numpy as np
 from libero.libero import benchmark, get_libero_path
 from libero.libero.envs import OffScreenRenderEnv
 from openpi_client import image_tools
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
-from PIL import Image, ImageDraw
+
+from meridian.recording import write_evidence_videos
+from meridian.rollout_integrity import (
+    canonical_sha256,
+    contact_pairs,
+    file_sha256,
+    pad_contact_pairs,
+    reserve_results_path,
+    simulator_metadata,
+    simulator_state_sha256,
+    validate_plans,
+)
 
 DUMMY_ACTION = np.asarray([0.0] * 6 + [-1.0])
 MAX_STEPS = {
@@ -27,155 +36,6 @@ MAX_STEPS = {
     "libero_10": 520,
     "libero_90": 400,
 }
-
-
-def quat_multiply(left: np.ndarray, right: np.ndarray) -> np.ndarray:
-    w1, x1, y1, z1 = left
-    w2, x2, y2, z2 = right
-    return np.asarray(
-        [
-            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
-            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
-            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
-            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
-        ]
-    )
-
-
-def apply_sim_parameters(env: OffScreenRenderEnv, parameters: dict[str, float | str]) -> None:
-    camera_id = env.sim.model.camera_name2id("agentview")
-    env.sim.model.cam_pos[camera_id, 0] += float(parameters.get("camera_x", 0.0))
-    yaw = math.radians(float(parameters.get("camera_yaw_deg", 0.0)))
-    yaw_quat = np.asarray([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)])
-    env.sim.model.cam_quat[camera_id] = quat_multiply(yaw_quat, env.sim.model.cam_quat[camera_id])
-    joint_name = parameters.get("object_joint")
-    if joint_name:
-        joint_id = env.sim.model.joint_name2id(str(joint_name))
-        qpos_address = env.sim.model.jnt_qposadr[joint_id]
-        env.sim.data.qpos[qpos_address] += float(parameters.get("object_x", 0.0))
-        env.sim.data.qpos[qpos_address + 1] += float(parameters.get("object_y", 0.0))
-    env.sim.forward()
-
-
-def camera_pose(env: OffScreenRenderEnv, name: str = "agentview") -> tuple[np.ndarray, np.ndarray]:
-    """Return a copy of a MuJoCo camera pose so a fixed observer can be restored."""
-    camera_id = env.sim.model.camera_name2id(name)
-    return (
-        np.array(env.sim.model.cam_pos[camera_id], copy=True),
-        np.array(env.sim.model.cam_quat[camera_id], copy=True),
-    )
-
-
-def render_at_camera_pose(
-    env: OffScreenRenderEnv,
-    pose: tuple[np.ndarray, np.ndarray],
-    name: str = "agentview",
-) -> np.ndarray:
-    """Render a diagnostic observer without changing the camera used by the policy."""
-    camera_id = env.sim.model.camera_name2id(name)
-    active_pose = camera_pose(env, name)
-    try:
-        env.sim.model.cam_pos[camera_id] = pose[0]
-        env.sim.model.cam_quat[camera_id] = pose[1]
-        env.sim.forward()
-        image = env.sim.render(camera_name=name, height=256, width=256)
-        return np.ascontiguousarray(image[::-1, ::-1])
-    finally:
-        env.sim.model.cam_pos[camera_id] = active_pose[0]
-        env.sim.model.cam_quat[camera_id] = active_pose[1]
-        env.sim.forward()
-
-
-def diagnostic_frames(
-    clean_images: list[np.ndarray],
-    policy_images: list[np.ndarray],
-    wrist_images: list[np.ndarray],
-    *,
-    parameters: dict[str, float | str],
-    success: bool,
-) -> np.ndarray:
-    """Build synchronized, labelled clean/policy/wrist evidence frames."""
-    if not (len(clean_images) == len(policy_images) == len(wrist_images)):
-        raise ValueError("diagnostic streams must have identical lengths")
-    parameter_text = ", ".join(
-        f"{key}={value}"
-        for key, value in sorted(parameters.items())
-        if key
-        in {
-            "camera_x",
-            "camera_yaw_deg",
-            "brightness",
-            "occlusion",
-            "visual_distractors",
-            "action_noise",
-            "replan_steps",
-        }
-    )
-    header = f"clean observer | exact policy input | wrist    success={success}"
-    frames = []
-    for clean, policy, wrist in zip(clean_images, policy_images, wrist_images):
-        panel = np.concatenate((clean, policy, wrist), axis=1)
-        canvas = Image.new("RGB", (panel.shape[1], panel.shape[0] + 42), "black")
-        canvas.paste(Image.fromarray(panel), (0, 42))
-        draw = ImageDraw.Draw(canvas)
-        draw.text((6, 4), header, fill="white")
-        draw.text((6, 22), parameter_text, fill="white")
-        frames.append(np.asarray(canvas))
-    return np.asarray(frames)
-
-
-def write_evidence_videos(
-    episode_dir: Path,
-    clean_images: list[np.ndarray],
-    policy_images: list[np.ndarray],
-    wrist_images: list[np.ndarray],
-    *,
-    parameters: dict[str, float | str],
-    success: bool,
-) -> dict[str, str]:
-    """Write the four synchronized evidence streams required for every rollout."""
-    videos = {
-        "clean_observer": episode_dir / "clean_observer.mp4",
-        "policy_input": episode_dir / "policy_input.mp4",
-        "wrist": episode_dir / "wrist.mp4",
-        "diagnostic": episode_dir / "diagnostic.mp4",
-    }
-    iio.imwrite(videos["clean_observer"], np.asarray(clean_images), fps=10)
-    iio.imwrite(videos["policy_input"], np.asarray(policy_images), fps=10)
-    iio.imwrite(videos["wrist"], np.asarray(wrist_images), fps=10)
-    iio.imwrite(
-        videos["diagnostic"],
-        diagnostic_frames(
-            clean_images,
-            policy_images,
-            wrist_images,
-            parameters=parameters,
-            success=success,
-        ),
-        fps=10,
-    )
-    return {key: str(path) for key, path in videos.items()}
-
-
-def perturb_image(
-    image: np.ndarray, parameters: dict[str, float | str], rng: np.random.Generator
-) -> np.ndarray:
-    result = np.asarray(image, dtype=np.float32) * float(parameters.get("brightness", 1.0))
-    result = np.clip(result, 0, 255).astype(np.uint8)
-    occlusion = float(parameters.get("occlusion", 0.0))
-    if occlusion > 0:
-        height, width = result.shape[:2]
-        side = int(math.sqrt(min(0.8, occlusion)) * min(height, width))
-        x = int(rng.integers(0, max(1, width - side)))
-        y = int(rng.integers(0, max(1, height - side)))
-        result[y : y + side, x : x + side] = 0
-    for _ in range(int(parameters.get("visual_distractors", 0))):
-        height, width = result.shape[:2]
-        side = max(4, min(height, width) // 18)
-        x = int(rng.integers(0, max(1, width - side)))
-        y = int(rng.integers(0, max(1, height - side)))
-        result[y : y + side, x : x + side] = rng.integers(0, 256, size=3, dtype=np.uint8)
-    return result
 
 
 def state_vector(obs: dict) -> np.ndarray:
@@ -202,20 +62,22 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
     task_id, seed = int(plan["task_id"]), int(plan["seed"])
     task = suite.get_task(task_id)
     env = environment(task, seed)
-    rng = np.random.default_rng(seed)
     episode_id = plan.get("id", f"task{task_id}-seed{seed}")
     episode_dir = output / "episodes" / str(episode_id)
     episode_dir.mkdir(parents=True, exist_ok=True)
     clean_images, policy_images, wrist_images, states, actions = [], [], [], [], []
+    sim_qpos, sim_qvel, contact_counts, sim_contact_pairs = [], [], [], []
     done, failure_phase, inference_seconds = False, "timeout", 0.0
     try:
         env.reset()
         initial_states = suite.get_task_init_states(task_id)
         init_index = int(plan.get("init_state_index", seed % len(initial_states)))
         obs = env.set_init_state(initial_states[init_index])
-        observer_pose = camera_pose(env)
-        apply_sim_parameters(env, plan)
         obs = env.regenerate_obs_from_state(env.get_sim_state())
+        initial_state_hash = simulator_state_sha256(env.sim.data.qpos, env.sim.data.qvel)
+        initial_qpos = np.array(env.sim.data.qpos, copy=True)
+        initial_qvel = np.array(env.sim.data.qvel, copy=True)
+        sim_schema = simulator_metadata(env.sim)
         action_plan: collections.deque = collections.deque()
         wait_steps = int(plan.get("wait_steps", 10))
         replan_steps = int(plan.get("replan_steps", 5))
@@ -223,11 +85,15 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
         for step in range(max_steps):
             if step < wait_steps:
                 obs, _, done, _ = env.step(DUMMY_ACTION.tolist())
+                if done:
+                    raise ValueError(
+                        f"plan {episode_id} reaches the goal during settling; invalid initial state"
+                    )
                 continue
             image = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
             wrist = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
-            policy_image = perturb_image(image, plan, rng)
-            clean_image = render_at_camera_pose(env, observer_pose)
+            policy_image = image
+            clean_image = image.copy()
             if not action_plan:
                 element = {
                     "observation/image": image_tools.convert_to_uint8(
@@ -244,14 +110,15 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
                 inference_seconds += time.monotonic() - inference_started
                 action_plan.extend(chunk[:replan_steps])
             action = np.asarray(action_plan.popleft(), dtype=np.float32)
-            noise = float(plan.get("action_noise", 0.0))
-            if noise:
-                action[:6] += rng.normal(0.0, noise, 6)
             clean_images.append(clean_image)
             policy_images.append(policy_image)
             wrist_images.append(wrist)
             states.append(state_vector(obs))
             actions.append(action)
+            sim_qpos.append(np.array(env.sim.data.qpos, copy=True))
+            sim_qvel.append(np.array(env.sim.data.qvel, copy=True))
+            contact_counts.append(int(env.sim.data.ncon))
+            sim_contact_pairs.append(contact_pairs(env.sim))
             obs, _, done, _ = env.step(action.tolist())
             if done:
                 failure_phase = "complete"
@@ -265,6 +132,12 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             wrist_image=wrist_images,
             state=states,
             actions=actions,
+            sim_qpos=sim_qpos,
+            sim_qvel=sim_qvel,
+            contact_count=contact_counts,
+            contact_geom_ids=pad_contact_pairs(sim_contact_pairs),
+            initial_sim_qpos=initial_qpos,
+            initial_sim_qvel=initial_qvel,
         )
         videos = (
             write_evidence_videos(
@@ -278,12 +151,13 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             if policy_images
             else {}
         )
-        trace_hash = hashlib.sha256(trace_path.read_bytes()).hexdigest()
+        prompt = str(task.language)
         return {
             "id": episode_id,
             "task_suite": plan["task_suite"],
             "task_id": task_id,
-            "task": str(task.language),
+            "task": prompt,
+            "prompt": prompt,
             "seed": seed,
             "init_state_index": init_index,
             "parameters": {
@@ -298,7 +172,10 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             "duration_seconds": time.monotonic() - started,
             "inference_seconds": inference_seconds,
             "trace": str(trace_path),
-            "trace_sha256": trace_hash,
+            "trace_sha256": file_sha256(trace_path),
+            "plan_sha256": canonical_sha256(plan),
+            "initial_sim_state_sha256": initial_state_hash,
+            "simulator_schema": sim_schema,
             "video": videos.get("diagnostic"),
             "videos": videos,
         }
@@ -313,7 +190,9 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-    plans = [json.loads(line) for line in args.plans.read_text().splitlines() if line.strip()]
+    plans = validate_plans(
+        [json.loads(line) for line in args.plans.read_text().splitlines() if line.strip()]
+    )
     args.output.mkdir(parents=True, exist_ok=True)
     client = WebsocketClientPolicy(args.host, args.port)
     suites = {
@@ -321,6 +200,7 @@ def main() -> None:
         for name in {plan["task_suite"] for plan in plans}
     }
     results_path = args.output / "rollouts.jsonl"
+    reserve_results_path(results_path)
     with results_path.open("a") as stream:
         for plan in plans:
             result = run_plan(client, suites[plan["task_suite"]], plan, args.output)

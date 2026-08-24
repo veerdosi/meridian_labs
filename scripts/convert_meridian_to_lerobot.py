@@ -10,6 +10,8 @@ from pathlib import Path
 import numpy as np
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
+from meridian.rollout_integrity import aligned_trajectory_arrays, file_sha256
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -43,23 +45,28 @@ def main() -> None:
     records = [json.loads(line) for line in args.rollouts.read_text().splitlines() if line.strip()]
     selected = [record for record in records if record["success"] or args.include_failures]
     for record in selected:
-        trajectory = np.load(record["trace"])
-        for image, wrist, state, action in zip(
-            trajectory["image"],
-            trajectory["wrist_image"],
-            trajectory["state"],
-            trajectory["actions"],
-            strict=True,
-        ):
-            dataset.add_frame(
-                {
-                    "image": image,
-                    "wrist_image": wrist,
-                    "state": state.astype(np.float32),
-                    "actions": action.astype(np.float32),
-                    "task": record["task"],
-                }
+        trace_path = Path(record["trace"])
+        observed_hash = file_sha256(trace_path)
+        expected_hash = record.get("trace_sha256")
+        if expected_hash and observed_hash != expected_hash:
+            raise ValueError(
+                f"trace hash mismatch for {record['id']}: "
+                f"expected {expected_hash}, observed {observed_hash}"
             )
+        with np.load(trace_path) as trajectory:
+            images, wrists, states, actions = aligned_trajectory_arrays(
+                trajectory, ("image", "wrist_image", "state", "actions")
+            )
+            for index in range(len(actions)):
+                dataset.add_frame(
+                    {
+                        "image": images[index],
+                        "wrist_image": wrists[index],
+                        "state": states[index].astype(np.float32),
+                        "actions": actions[index].astype(np.float32),
+                        "task": record["task"],
+                    }
+                )
         dataset.save_episode()
     print(
         json.dumps(
