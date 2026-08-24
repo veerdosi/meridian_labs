@@ -6,6 +6,8 @@ def records(target: list[bool], regression: list[bool]) -> list[dict]:
         {
             "id": f"target-{index}",
             "success": success,
+            "task_suite": "target_suite",
+            "task_id": 0,
             "parameters": {"evaluation_suite": "target"},
         }
         for index, success in enumerate(target)
@@ -13,6 +15,8 @@ def records(target: list[bool], regression: list[bool]) -> list[dict]:
         {
             "id": f"regression-{index}",
             "success": success,
+            "task_suite": "regression_suite",
+            "task_id": 1,
             "parameters": {"evaluation_suite": "regression:test"},
         }
         for index, success in enumerate(regression)
@@ -63,6 +67,11 @@ def test_physical_dose_releases_original_only_after_beating_random() -> None:
         expected_regression=2,
     )
     assert decision["decision"] == "release_original"
+    task_summary = decision["arms"]["targeted"]["target_by_task"]["target_suite:0"]
+    assert task_summary["successes"] == 4
+    assert task_summary["trials"] == 4
+    assert task_summary["success_rate"] == 1.0
+    assert decision["paired"]["released_checkpoint"]["wins"] == 2
 
 
 def test_physical_medium_dose_stops_when_marginal_gain_saturates() -> None:

@@ -32,6 +32,25 @@ def _paired_sign_test(candidate: dict[str, bool], reference: dict[str, bool]) ->
     }
 
 
+def _binomial_summary(records: list[dict]) -> dict:
+    successes = sum(bool(record["success"]) for record in records)
+    trials = len(records)
+    return {
+        "successes": successes,
+        "trials": trials,
+        "success_rate": successes / trials,
+        "wilson_95": _wilson(successes, trials),
+    }
+
+
+def _group_summaries(records: list[dict], keys: tuple[str, ...]) -> dict[str, dict]:
+    groups: dict[str, list[dict]] = {}
+    for record in records:
+        key = ":".join(str(record.get(field)) for field in keys)
+        groups.setdefault(key, []).append(record)
+    return {key: _binomial_summary(groups[key]) for key in sorted(groups)}
+
+
 def _arm_summary(records: list[dict], *, expected_target: int, expected_regression: int) -> dict:
     target = [
         record
@@ -54,6 +73,8 @@ def _arm_summary(records: list[dict], *, expected_target: int, expected_regressi
         "regression_successes": regression_successes,
         "regression_trials": len(regression),
         "regression_success_rate": regression_successes / len(regression),
+        "target_by_task": _group_summaries(target, ("task_suite", "task_id")),
+        "regression_by_task": _group_summaries(regression, ("task_suite", "task_id")),
         "target_outcomes": {record["id"]: bool(record["success"]) for record in target},
     }
 
@@ -148,7 +169,7 @@ def evaluate_dose_gate(
     regression_loss = baseline_summary["regression_success_rate"] - targeted_summary["regression_success_rate"]
     paired = {
         name: _paired_sign_test(targeted_summary["target_outcomes"], arms[name]["target_outcomes"])
-        for name in ("random", "original_distribution")
+        for name in ("released_checkpoint", "random", "original_distribution")
         if name in arms
     }
     comparisons = {

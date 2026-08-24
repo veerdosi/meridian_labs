@@ -35,9 +35,14 @@ export MERIDIAN_DECAY_STEPS="$TRAIN_STEPS"
 export MERIDIAN_SAVE_INTERVAL="$TRAIN_STEPS"
 export MERIDIAN_CHECKPOINT_ROOT="$ROOT/checkpoints"
 export MERIDIAN_STARTING_PARAMS=${MERIDIAN_STARTING_PARAMS:-"$ROOT/cache/openpi/openpi-assets/checkpoints/pi05_libero/params"}
+export MERIDIAN_ASSETS_DIR=${MERIDIAN_ASSETS_DIR:-"$ROOT/cache/openpi/openpi-assets/checkpoints/pi05_libero/assets"}
+# Lock-bearing caches in the network-mounted home directory can serialize
+# concurrent arms behind a policy server that stays alive for evaluation.
+export XDG_CACHE_HOME="$RUN_ROOT/cache"
+export JAX_COMPILATION_CACHE_DIR="$RUN_ROOT/cache/jax"
 export PYTHONPATH="$ROOT/harness/src:$ROOT/harness:${PYTHONPATH:-}"
 
-mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME" "$MERIDIAN_CHECKPOINT_ROOT"
+mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME" "$MERIDIAN_CHECKPOINT_ROOT" "$JAX_COMPILATION_CACHE_DIR"
 module load python/3.11.7-gcc11 cuda/12.2.2
 nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw \
   --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
