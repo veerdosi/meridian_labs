@@ -1,0 +1,16 @@
+{"id":"role-confirm-t18-i18-canonical","task_suite":"libero_90","task_id":18,"seed":73180,"init_state_index":18,"phase":"role_confirmation_canonical","replan_steps":5,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i21-canonical","task_suite":"libero_90","task_id":18,"seed":73181,"init_state_index":21,"phase":"role_confirmation_canonical","replan_steps":5,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i18-rapid","task_suite":"libero_90","task_id":18,"seed":73182,"init_state_index":18,"phase":"role_confirmation_rapid_replan","replan_steps":1,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i21-rapid","task_suite":"libero_90","task_id":18,"seed":73183,"init_state_index":21,"phase":"role_confirmation_rapid_replan","replan_steps":1,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i18-longchunk","task_suite":"libero_90","task_id":18,"seed":73184,"init_state_index":18,"phase":"role_confirmation_long_chunk","replan_steps":10,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i21-longchunk","task_suite":"libero_90","task_id":18,"seed":73185,"init_state_index":21,"phase":"role_confirmation_long_chunk","replan_steps":10,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t18-i18-extended","task_suite":"libero_90","task_id":18,"seed":73186,"init_state_index":18,"phase":"role_confirmation_extended_horizon","replan_steps":5,"max_steps":800,"wait_steps":10}
+{"id":"role-confirm-t18-i21-extended","task_suite":"libero_90","task_id":18,"seed":73187,"init_state_index":21,"phase":"role_confirmation_extended_horizon","replan_steps":5,"max_steps":800,"wait_steps":10}
+{"id":"role-confirm-t37-i18-canonical","task_suite":"libero_90","task_id":37,"seed":73280,"init_state_index":18,"phase":"role_confirmation_canonical","replan_steps":5,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i21-canonical","task_suite":"libero_90","task_id":37,"seed":73281,"init_state_index":21,"phase":"role_confirmation_canonical","replan_steps":5,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i18-rapid","task_suite":"libero_90","task_id":37,"seed":73282,"init_state_index":18,"phase":"role_confirmation_rapid_replan","replan_steps":1,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i21-rapid","task_suite":"libero_90","task_id":37,"seed":73283,"init_state_index":21,"phase":"role_confirmation_rapid_replan","replan_steps":1,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i18-longchunk","task_suite":"libero_90","task_id":37,"seed":73284,"init_state_index":18,"phase":"role_confirmation_long_chunk","replan_steps":10,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i21-longchunk","task_suite":"libero_90","task_id":37,"seed":73285,"init_state_index":21,"phase":"role_confirmation_long_chunk","replan_steps":10,"max_steps":400,"wait_steps":10}
+{"id":"role-confirm-t37-i18-extended","task_suite":"libero_90","task_id":37,"seed":73286,"init_state_index":18,"phase":"role_confirmation_extended_horizon","replan_steps":5,"max_steps":800,"wait_steps":10}
+{"id":"role-confirm-t37-i21-extended","task_suite":"libero_90","task_id":37,"seed":73287,"init_state_index":21,"phase":"role_confirmation_extended_horizon","replan_steps":5,"max_steps":800,"wait_steps":10}

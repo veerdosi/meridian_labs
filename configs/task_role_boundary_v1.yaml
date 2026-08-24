@@ -1,0 +1,75 @@
+schema: meridian-task-role-boundary-v1
+status: locked_before_confirmation_outcomes
+locked_at_utc: "2026-08-24T11:18:34Z"
+policy:
+  checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+  config: pi05_libero
+hypothesis:
+  observed_gap: object_selection_or_role_binding
+  candidate_missing_coverage: task_object_relation_role_diversity
+  competing_explanations:
+    - insufficient_horizon
+    - inference_replanning_frequency
+    - task_level_incompetence_without_a_shared_mechanism
+  prior_evidence:
+    screen_job: 15246322.pbs101
+    diagnosis_job: 15246510.pbs101
+    screen_trials: 60
+    candidate_failures: 12
+    clear_wrong_object_signatures: 10
+    ambiguous_failure_variants: 2
+tasks:
+  - suite: libero_90
+    task_id: 18
+    task: frying_pan_to_stove
+    target_object: chefmate_8_frypan_1
+    recurrent_distractor: moka_pot_1
+  - suite: libero_90
+    task_id: 37
+    task: white_bowl_right_of_plate
+    target_object: white_bowl_1
+    recurrent_distractor: plate_1
+partitions:
+  discovery_init_states: [0, 3, 6, 9, 12, 15]
+  confirmation_init_states: [18, 21]
+  training_init_states: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+  untouched_holdout_init_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+confirmation:
+  plan_file: configs/task_role_boundary_v1/confirmation.jsonl
+  seed: 73180
+  trials: 16
+  states_per_task: 2
+  controls:
+    - {name: canonical, replan_steps: 5, max_steps: 400}
+    - {name: rapid_replan, replan_steps: 1, max_steps: 400}
+    - {name: long_chunk, replan_steps: 10, max_steps: 400}
+    - {name: extended_horizon, replan_steps: 5, max_steps: 800}
+  estimated_su: {low: 25, high: 40, basis: "15246322 measured rollout throughput"}
+confirmation_gate:
+  object_motion_threshold_m: 0.025
+  wrong_object_definition: target_motion_below_threshold_and_distractor_motion_at_or_above_threshold
+  require_each_task_overall_success_at_most: 0.125
+  require_each_task_wrong_object_fraction_at_least: 0.75
+  require_pooled_wrong_object_trials_at_least: 12
+  require_each_task_extended_horizon_successes: 0
+  require_each_task_replanning_control_successes_at_most: 1
+  human_review_required: true
+  decision:
+    pass: proceed_to_demonstration_provenance_and_conversion_preflight
+    fail: reject_shared_role_binding_claim_and_do_not_train_this_boundary
+data_contract:
+  doses: [4, 8]
+  targeted_balance: equal_examples_per_task
+  arms: [targeted, random, original_distribution]
+  matched_start_checkpoint: true
+  matched_training_steps: true
+evaluation_contract:
+  target_trials: 40
+  target_trials_per_task: 20
+  regression_trials: 20
+  regression_limit_absolute: 0.02
+  holdout_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+stopping:
+  dose_4: targeted_must_strictly_beat_random_and_original_distribution_within_regression_limit
+  dose_8: run_only_if_dose_4_passes
+  stop: targeted_not_strictly_better_or_regression_limit_exceeded
