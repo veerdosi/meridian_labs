@@ -5,10 +5,10 @@ research agent work out what went wrong, collect the right corrective data, and 
 choice was better than simply adding more examples?
 
 The robot policy is π0.5. It sees a language instruction, an observer-camera image, a wrist-camera
-image, and robot state, then controls a simulated Franka Panda arm in LIBERO. I built a harness
-around Codex to run the research process: choose experiments, read videos and MuJoCo traces, reject
-bad hypotheses, select training data, run controlled fine-tunes, and decide when the evidence is
-strong enough to continue.
+image, and robot state, then controls a simulated Franka Panda arm in LIBERO. I set the research
+objective and the standard of evidence. Around that brief, Codex built and operated a harness that
+could choose experiments, read videos and MuJoCo traces, reject bad hypotheses, select training
+data, run controlled fine-tunes, and stop when the evidence no longer justified more compute.
 
 ## The research loop I wanted
 
@@ -22,6 +22,13 @@ I gave Codex three questions to answer:
 1. Where in the behavior is the gap?
 2. What kind of experience is missing?
 3. How much corrective data is enough?
+
+I kept the project-level decisions: what claim mattered, what counted as a valid experiment, and
+when the evidence required a major pivot. I did not prescribe each rollout or debugging step. Codex
+owned the work inside those constraints. It proposed search spaces, chose tasks and states, wrote
+the experiment code, submitted compute, diagnosed trajectories, designed controls, selected
+demonstrations, and applied the stopping rules. Negative results stayed in the record alongside
+positive ones.
 
 The resulting loop looks like this:
 
@@ -48,12 +55,12 @@ record can still be a scientifically meaningless experiment.
 
 ## The first task and the result I almost kept
 
-I started with LIBERO Spatial task 0: pick up the black bowl between the plate and the ramekin and
-place it on the plate. I chose it because the released policy was competent on the ordinary task,
-which gave the experiment room to isolate a boundary rather than teach the task from scratch. It
-solved all 40 rollouts in the initial envelope. A wider 24-rollout search produced two failures
-under a combination of camera translation, camera rotation, image occlusion, visual distractors,
-action noise, and faster replanning.
+For the first campaign, I decided that Codex should look for a boundary in an otherwise competent
+policy rather than quietly teach it a task from scratch. Codex selected LIBERO Spatial task 0: pick
+up the black bowl between the plate and the ramekin and place it on the plate. The released policy
+solved all 40 rollouts in the initial envelope. Codex then widened the search, and 2 of 24 rollouts
+failed under a combination of camera translation, camera rotation, image occlusion, visual
+distractors, action noise, and faster replanning.
 
 One profile reproduced its failure in four of five new trials. Matched probes then narrowed the
 interaction: under the stressed observation, two-step replanning succeeded in 0/5 trials while the
@@ -63,12 +70,12 @@ to break it.
 
 The first data intervention was informative but negative. Targeted data improved the released
 checkpoint from 9/20 to 16/20 target successes, but random data reached 19/20 and
-original-distribution data reached 18/20. I used that result to revise the selector rather than
-claim a targeted-data win. A second, locked dose-eight campaign concentrated six examples near the
-measured boundary and kept two for broader coverage.
+original-distribution data reached 18/20. Codex treated that as a failed hypothesis and revised the
+selector rather than relabeling the best arm. Its second, locked dose-eight campaign concentrated
+six examples near the measured boundary and kept two for broader coverage.
 
 Every trained arm started from the same released `pi05_libero` checkpoint and fine-tuned LoRA
-adapters for 100 optimizer steps. I used batch size 2, AdamW with gradient clipping at 1.0, and a
+adapters for 100 optimizer steps. Codex used batch size 2, AdamW with gradient clipping at 1.0, and a
 cosine schedule with 10 warmup steps and a peak learning rate of 5 × 10⁻⁵. The π0.5 action horizon
 remained 10. The first comparison used 24 trajectories per arm; the refined comparison used eight.
 Nothing except the selected training trajectories changed between equal-dose arms.
@@ -84,24 +91,25 @@ This time the table looked excellent:
 
 Targeted beat the released checkpoint by 19 trials and random by three, with no target losses in
 either paired comparison. It also reached the ceiling, so the stopping rule rejected a larger dose.
-I thought I had the first complete result. Then I inspected the videos.
+Codex's locked gate called the campaign positive. I thought I had the first complete result, but I
+asked for a visual audit before accepting it.
 
-A black mask covered roughly a quarter of the observer image. The accompanying camera transform
+Codex found that a black mask covered roughly a quarter of the observer image. The accompanying camera transform
 pushed the robot, the manipulated bowl, and the goal plate outside the field of view. Worse, the
 policy also received a wrist-camera stream, but the evidence video did not show it. I could not tell
 whether the intervention had created a difficult but solvable viewpoint or simply removed the
 information required to solve the task.
 
-I threw away the result.
+I decided not to use the result as evidence for the intervention claim.
 
 ![The recording preflight with clean observer view, policy input, and wrist-camera view.](../artifacts/physical-preflight/15246052/diagnostic-montage.png)
 
 _The rebuilt recording path. This preflight used canonical observations, so the clean observer view
 and policy input match. The wrist image is π0.5's second visual input._
 
-This sounds like basic experimental hygiene because it is. The useful part was making that hygiene
-executable. The harness checks synchronization, image orientation, finite actions and states,
-contact records, object motion, and the task predicate before a campaign can proceed.
+I made synchronized visual evidence a requirement for every later campaign. Codex made that
+requirement executable: the harness now checks synchronization, image orientation, finite actions
+and states, contact records, object motion, and the task predicate before training can proceed.
 
 ## Turning a rollout into physical evidence
 
@@ -131,12 +139,13 @@ becomes important later because the first diagnostic implementation got exactly 
 
 ## A 60-rollout search across LIBERO
 
-With the recorder working, I asked Codex to search natural LIBERO initial states rather than invent
-a perturbation. The screen covered ten tasks, with two tasks from each of LIBERO Spatial, Object,
-Goal, LIBERO-10, and LIBERO-90. π0.5 ran six canonical rollouts per task for 60 trials in total.
+After rejecting Task 1, I made the main scientific pivot: stop manufacturing a viewpoint boundary
+and search for a natural physical failure in LIBERO. Codex designed a balanced screen over ten
+tasks, with two tasks from each of LIBERO Spatial, Object, Goal, LIBERO-10, and LIBERO-90. π0.5 ran
+six canonical rollouts per task for 60 trials in total.
 
-Before inference, a state-only inventory checked 500 initial states and verified that none already
-satisfied its goal. I also separated states by purpose before seeing outcomes:
+Before inference, Codex ran a state-only inventory over 500 initial states and verified that none
+already satisfied its goal. It also separated states by purpose before seeing outcomes:
 
 | Partition         | Use                              | State indices      |
 | ----------------- | -------------------------------- | ------------------ |
@@ -165,13 +174,14 @@ slightly worse everywhere. It was completely reliable on eight tasks and repeate
 
 The initial selector had been built to find pose boundaries within otherwise competent tasks. It
 looked for nearby initial states that separated successes from failures. A task with six failures
-and no successes therefore received a poor score. I did not override the score because the videos
-looked interesting. Codex first had to establish whether these were purposeful, diagnosable
-failures with any reason to expect intervention headroom.
+and no successes therefore received a poor score. I had already ruled out selecting a task merely
+because it failed. Codex therefore tested whether these were purposeful, repeatable failures with a
+specific mechanism and a reason to expect intervention headroom.
 
-The physical traces showed that the robot was active. Every failed rollout used the 400-step
+The physical traces showed Codex that the robot was active. Every failed rollout used the 400-step
 horizon. The end effector travelled roughly 1.1 to 1.8 metres and spent substantial time in contact
-with scene objects. The policy had a strategy. I needed to see which strategy it was executing.
+with scene objects. The policy had a strategy. Codex now had to identify which strategy it was
+executing.
 
 ## The diagnostic bug that hid the behavior
 
@@ -189,11 +199,11 @@ Running the corrected diagnosis on the same trajectories changed the interpretat
 
 For **put the frying pan on the stove**, the frying pan was effectively stationary in all six
 states. The moka pot moved 19 to 30 centimetres in five trials. It moved 2.43 centimetres in the
-sixth, just below the locked 2.5-centimetre threshold, so I marked that case ambiguous.
+sixth, just below the locked 2.5-centimetre threshold, so Codex marked that case ambiguous.
 
 For **put the white bowl to the right of the plate**, the bowl moved less than 1 millimetre in five
 trials while the plate moved 3.4 to 22 centimetres. Both objects moved in the remaining trial, which
-I also marked ambiguous.
+Codex also marked ambiguous.
 
 Ten of the 12 discovery failures had the strict signature: negligible target motion and substantial
 motion of the wrong object.
@@ -209,9 +219,9 @@ The synchronized discovery rollouts are here:
 - [White bowl to right of plate, state 0](../artifacts/physical-campaign/screening/15246322/representative-videos/screen-libero_90-t37-i0-diagnostic.mp4)
 - [White bowl to right of plate, state 9](../artifacts/physical-campaign/screening/15246322/representative-videos/screen-libero_90-t37-i9-diagnostic.mp4)
 
-At this stage, I had a plausible object-role or strategy-selection failure. I still did not know
-whether the policy would recover with a longer episode or different action replanning. That was the
-purpose of the next experiment.
+At this stage, I had a plausible object-role or strategy-selection failure. I required a locked
+confirmation before any training spend. Codex still had to test whether the policy would recover
+with a longer episode or different action replanning.
 
 ## Trying to make the failure disappear
 
@@ -225,9 +235,10 @@ settings per state:
 | Longer action chunk |                   10 steps | 400 steps |
 | Extended episode    |                    5 steps | 800 steps |
 
-This produced 16 confirmation rollouts. The gate was written before any outcome was inspected. The
+This produced 16 confirmation rollouts. Codex wrote the gate before any outcome was inspected. The
 behavior had to repeat on both tasks, appear in at least 12 of 16 traces, and persist under the
-replanning and horizon controls. A human also had to inspect representative videos.
+replanning and horizon controls. I retained a final requirement that the representative videos also
+make physical sense to a human reviewer.
 
 π0.5 succeeded in **0 of 16** trials. The corrected telemetry found the wrong-object signature in
 **16 of 16**. Canonical control, rapid replanning, longer chunks, and the doubled horizon all
@@ -283,6 +294,14 @@ retaining successful approach, grasp, transport, and placement actions.
 
 ## How the intervention will be judged
 
+I rejected an easier random control drawn from unrelated tasks because it would confound task
+identity with data selection. The primary comparison had to ask whether Codex's diagnosis chose
+better examples, not merely whether the model had seen the failing tasks. Codex therefore built
+targeted and random sets from the same two task files, the same protected training partition, and
+the same dose. Targeted uses the diagnosed geometry; random uses a fixed seed without geometry
+scoring. Original-distribution rehearsal remains a secondary control and runs only if targeted
+first beats this stronger same-task random arm.
+
 The campaign starts from the released π0.5 checkpoint and evaluates four conditions when the gates
 justify them:
 
@@ -305,9 +324,10 @@ as the same number of episodes. Only episode selection differs.
 
 Every trained arm is evaluated on 40 target trials from untouched states and 20 regression trials.
 The analysis reports per-task and pooled success, paired trial outcomes, Wilson confidence
-intervals, and regression against the released checkpoint. Targeted must strictly beat same-task
-random while staying within the predefined regression limit. Otherwise the intervention stops at
-that dose.
+intervals, and regression against the released checkpoint. I set the decision criterion before
+training: targeted must strictly beat same-task random while staying within the predefined
+regression limit. Codex applies that gate without renegotiating it after seeing the scores. If the
+gate fails, the intervention stops at that dose.
 
 If dose eight runs, the blog will include a marginal-return graph across dose 0, 4, and 8. The
 horizontal axis will be the number of added demonstrations and the vertical axis target success,
