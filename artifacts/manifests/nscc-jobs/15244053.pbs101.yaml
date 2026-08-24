@@ -1,0 +1,26 @@
+job_id: 15244053.pbs101
+campaign: pi05-libero10-viewpoint-intervention-v1
+purpose: Released-checkpoint primary baseline plus disjoint training-only source pool.
+scientific_plan:
+  path: configs/plans/pi05-libero10-viewpoint-v1/baseline_and_source.jsonl
+  sha256: 9750d742e46a69285a41d419e0a8743ae8a5bdda2c067cac6167478ad891c7f7
+pbs:
+  queue: gdev
+  project: personal-veer001
+  requested_walltime_seconds: 7200
+  requested_ncpus: 16
+  requested_ngpus: 1
+  node: x1000c2s6b0n1
+  final_state: F
+  exit_status: 0
+  actual_walltime_seconds: 3026
+  gpu_hours: 0.8405555556
+  actual_su: 53.7955555556
+  accounting_source: pbs_qstat_finished_record
+result:
+  outcomes: 110
+  sha256: a1cdec6285679473634faede6cbaf9401e978dcedd2a29bed4f5658f01f8d0fc
+  target: {successes: 2, trials: 40, success_rate: 0.05, wilson_95: [0.0138203771, 0.1650417082]}
+  regression: {successes: 37, trials: 40, success_rate: 0.925, wilson_95: [0.8013546984, 0.9741644432]}
+  training_source_pool: {successes: 30, trials: 30, success_rate: 1.0, wilson_95: [0.8864829086, 1.0]}
+disposition: Complete result retained; all 30 source traces are training-only and eligible for matched replay planning.

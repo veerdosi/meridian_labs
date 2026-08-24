@@ -1,0 +1,48 @@
+{
+  "original_distribution": {
+    "intervention_axes": [
+      "camera_x",
+      "camera_yaw_deg"
+    ],
+    "intervention_id": "pi05_libero10_viewpoint_original_d8_v1",
+    "path": "configs/plans/pi05-libero10-viewpoint-v1/dose8/original_distribution.jsonl",
+    "plans": 8,
+    "sampling_strategy": "canonical",
+    "sources_matched_across_arms": true,
+    "target_component_plans": 0,
+    "target_fraction": 0.75,
+    "unique_sources": 8
+  },
+  "random": {
+    "intervention_axes": [
+      "camera_x",
+      "camera_yaw_deg"
+    ],
+    "intervention_id": "pi05_libero10_viewpoint_random_d8_v1",
+    "path": "configs/plans/pi05-libero10-viewpoint-v1/dose8/random.jsonl",
+    "plans": 8,
+    "sampling_strategy": "full_uniform",
+    "sources_matched_across_arms": true,
+    "target_component_plans": 0,
+    "target_fraction": 0.75,
+    "unique_sources": 8
+  },
+  "sources": {
+    "path": "configs/plans/pi05-libero10-viewpoint-v1/dose8/sources.jsonl",
+    "records": 8
+  },
+  "targeted": {
+    "intervention_axes": [
+      "camera_x",
+      "camera_yaw_deg"
+    ],
+    "intervention_id": "pi05_libero10_viewpoint_targeted_d8_v1",
+    "path": "configs/plans/pi05-libero10-viewpoint-v1/dose8/targeted.jsonl",
+    "plans": 8,
+    "sampling_strategy": "evidence_weighted_mixture",
+    "sources_matched_across_arms": true,
+    "target_component_plans": 6,
+    "target_fraction": 0.75,
+    "unique_sources": 8
+  }
+}

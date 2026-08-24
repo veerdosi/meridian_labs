@@ -125,7 +125,7 @@ cost_envelope:
   expected_medium_stage_if_needed_su: [80, 150]
   note: Ranges use measured 61.03 SU per 120 released rollouts, 5.53 SU for 32 replay trajectories, and 21.8-24.6 SU per prior 60-rollout dose-8 train/evaluate arm. Sixty SU remains guidance, not a ceiling.
 execution:
-  state: baseline_and_training_source_submitted
+  state: dose8_replay_plans_locked
   jobs:
     - job_id: 15244053.pbs101
       purpose: released_checkpoint_primary_baseline_and_training_only_source_pool
@@ -134,4 +134,29 @@ execution:
       requested_ngpus: 1
       readiness_timeout_seconds: 900
       expected_rollouts: 110
-      state: submitted
+      final_state: completed
+      exit_status: 0
+      actual_walltime_seconds: 3026
+      actual_su: 53.7955555556
+      outcomes_written: 110
+      result_sha256: a1cdec6285679473634faede6cbaf9401e978dcedd2a29bed4f5658f01f8d0fc
+  baseline_result:
+    target: {successes: 2, trials: 40, success_rate: 0.05, wilson_95: [0.0138203771, 0.1650417082]}
+    regression: {successes: 37, trials: 40, success_rate: 0.925, wilson_95: [0.8013546984, 0.9741644432]}
+    selected_task_canonical: {successes: 20, trials: 20, success_rate: 1.0, wilson_95: [0.8388698745, 1.0]}
+    training_source_pool: {successes: 30, trials: 30, success_rate: 1.0, wilson_95: [0.8864829086, 1.0]}
+  derived_replay_plans:
+    source_result_sha256: a1cdec6285679473634faede6cbaf9401e978dcedd2a29bed4f5658f01f8d0fc
+    dose8:
+      targeted: {sha256: 537bc662b7384ee0957479ecfae4debf87dbaf2c675096fead9a46b560ae1116, trajectories: 8, target_components: 6}
+      random: {sha256: 02af3675d4672786f21b3fd25d620c69fed30b733179fc96f32cc3dd144b785a, trajectories: 8}
+      original_distribution: {sha256: ab905fd3ea39bed8629a022af38cc602546d90ba0fa245031e508534fac5e726, trajectories: 8}
+      sources: {sha256: 10ec3d587c804648401208b94ca27707727ba1547b7749d86bb81cb6d3b8e710, matched_across_arms: true, unique: 8}
+    dose24_contingent:
+      targeted: {sha256: 8eb6fed8d382eded2ea199158d2c68a1afc9408e1d70349a40160c2d73b0e7be, trajectories: 24, target_components: 18}
+      random: {sha256: 09aa2788b17df0a8e7faa05f04472e0cf0c22c8e25aa2f7ac701077106b25468, trajectories: 24}
+      original_distribution: {sha256: 1bfaa5bb17f952c1a6c4c8f7907cca39d6783cfc0469f3be88b2918ed2f9b219, trajectories: 24}
+      sources: {sha256: 4db1419e5ad8424358415441db903a94b05bbce92774b46948c9ffcf912b9c8d, matched_across_arms: true, unique: 24}
+  accounting:
+    campaign_su_to_date: 53.7955555556
+    cumulative_measured_su: 404.8508322187
