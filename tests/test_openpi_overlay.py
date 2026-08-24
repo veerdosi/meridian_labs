@@ -13,3 +13,4 @@ def test_overlay_is_idempotent(tmp_path: Path) -> None:
     assert once.count(BEGIN) == 1
     assert "import os\n" in once
     assert "pi05_libero/params" in once
+    assert "MERIDIAN_STARTING_PARAMS" in once

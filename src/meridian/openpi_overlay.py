@@ -44,7 +44,10 @@ BLOCK = r"""    # BEGIN MERIDIAN MANAGED CONFIG
         ).get_freeze_filter(),
         ema_decay=None,
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_libero/params"
+            os.environ.get(
+                "MERIDIAN_STARTING_PARAMS",
+                "gs://openpi-assets/checkpoints/pi05_libero/params",
+            )
         ),
         assets_base_dir=os.environ.get("MERIDIAN_ASSETS_BASE_DIR", "./assets"),
         checkpoint_base_dir=os.environ.get("MERIDIAN_CHECKPOINT_ROOT", "./checkpoints"),
