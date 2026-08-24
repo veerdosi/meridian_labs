@@ -1,0 +1,24 @@
+job_id: 15243125.pbs101
+purpose: semantic_boundary_repeated_validation_attempt_2
+queue: gdev
+project: personal-veer001
+requested: {ncpus: 16, ngpus: 1, walltime_seconds: 7200}
+actual:
+  walltime_seconds: 301
+  gpu_hours: 0.0836111111
+  su_estimated: 5.3511111111
+exit_status: 124
+result: failed_before_rollouts
+failure:
+  classification: repeated_policy_server_startup_timeout
+  node: x1000c2s6b0n1
+  server_log_bytes: 0
+  readiness_log_bytes: 0
+  gpu_peak_memory_mib: 1
+  validation_outcomes_written: 0
+  scientific_use: none
+plans:
+  path: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
+  sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
+  rollouts: 120
+diagnosis: Two different nodes timed out before JAX touched the GPU; use the already-cached identical checkpoint path and a longer readiness allowance before another retry.

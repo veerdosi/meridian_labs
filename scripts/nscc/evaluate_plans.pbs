@@ -16,6 +16,7 @@ OPENPI_ROOT="$ROOT/src/openpi"
 RUN_ROOT="$ROOT/artifacts/evaluations/$RUN_ID/$PBS_JOBID"
 POLICY_CONFIG=${POLICY_CONFIG:-pi05_libero}
 CHECKPOINT_DIR=${CHECKPOINT_DIR:-gs://openpi-assets/checkpoints/pi05_libero}
+READINESS_TIMEOUT=${READINESS_TIMEOUT:-900}
 export OPENPI_DATA_HOME="$ROOT/cache/openpi"
 export UV_CACHE_DIR="$ROOT/cache/uv"
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
@@ -41,7 +42,7 @@ cd "$OPENPI_ROOT"
   --policy.dir "$CHECKPOINT_DIR" > "$RUN_ROOT/server.log" 2>&1 &
 SERVER_PID=$!
 
-timeout 300 "$ROOT/envs/openpi/bin/python" - <<'PY' \
+timeout "$READINESS_TIMEOUT" "$ROOT/envs/openpi/bin/python" - <<'PY' \
   > "$RUN_ROOT/readiness.log" 2>&1
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
 
@@ -73,6 +74,6 @@ export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
   --output "$RUN_ROOT/rollouts" \
   > >(tee "$RUN_ROOT/runner.log") 2>&1
 
-printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\negl_device_index=%s\n' \
-  "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
+printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\nreadiness_timeout=%s\negl_device_index=%s\n' \
+  "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" "$READINESS_TIMEOUT" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
