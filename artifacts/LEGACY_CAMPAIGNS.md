@@ -13,7 +13,7 @@ Essential context:
   evidence: semantic and synthetic visual failures were not sufficiently physical, specific, or
   causally grounded for the final claim.
 - Detailed Task 2 v1 (`pi05-libero10-viewpoint-*`) artifacts were deliberately removed from live
-  SSD/NSCC storage and from this archive tag. The campaign is not part of the research evidence.
+  SSD storage and from the archive tag. The campaign is not part of the research evidence.
 - Measured cumulative NSCC usage through those campaigns was 436.9041655521 SU.
 - The active final direction uses naturally valid LIBERO initial states, physical simulator
   telemetry, stage-level diagnosis, targeted/random/original data controls, dose stopping,
