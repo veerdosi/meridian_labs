@@ -1,7 +1,7 @@
 schema_version: 1
 cleanup_id: storage-cleanup-2026-08-24-v1
 date: 2026-08-24
-status: approved_targets_not_yet_deleted
+status: completed_and_verified
 active_pbs_jobs: []
 reference_graph:
   locked_task2_design:
@@ -78,6 +78,24 @@ protected:
   active_job_references_found: false
   manifest_references_to_delete_targets_found: false
   deletion_requires_this_manifest_committed: true
+  pre_deletion_commit: 5f431fc
 reclaimed:
-  local_ssd_bytes: 0
-  nscc_allocated_bytes: 0
+  local_ssd_logical_bytes: 141501107
+  nscc_allocated_bytes: 12771319808
+verification:
+  deleted_targets_absent: true
+  active_pbs_jobs_after: []
+  retained_paths_resolve: true
+  selected_checkpoint_metadata:
+    local_path: artifacts/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99/_CHECKPOINT_METADATA
+    remote_path: /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted/99/_CHECKPOINT_METADATA
+    sha256_both: 5e507740b5ccd55a3b541a83b8042a0772bd0f67ad331bf8521eb513e434aa05
+  active_source_trace:
+    path: /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-libero10-viewpoint-v1-baseline-source/15244053.pbs101/rollouts/episodes/viewpoint-v1-training-source-000/trajectory.npz
+    sha256: c22dc3d82ec59a0a63ac40aaef0bafe3c0a599011e242c2b36469537d03fe731
+  preflight_result:
+    path: /scratch/users/ntu/veer001/meridian_labs/artifacts/intervention-data/pi05-libero10-viewpoint-replay-preflight-v1/15244968.pbs101/targeted/rollouts.jsonl
+    sha256: 8920cd1570c5b126790e60d15afc80d4b89d8b2e6c7fd1bba15e7a12c6667703
+  retained_dataset_metadata:
+    path: /scratch/users/ntu/veer001/meridian_labs/datasets/lerobot/meridian/pi05-spatial-intervention-v2_targeted/meta/info.json
+    sha256: b4e714e6fe5a668384921a4b7191ce0b0306f00b0d6aa92e6dec1b23b697c102

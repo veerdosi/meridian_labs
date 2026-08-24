@@ -18,6 +18,7 @@ artifacts/**
 !artifacts/results/**
 artifacts/results/**/*.sqlite-shm
 artifacts/results/**/*.sqlite-wal
+artifacts/results/**/.DS_Store
 runs/**
 datasets/**
 checkpoints/**
