@@ -9,16 +9,18 @@ import json
 import time
 from pathlib import Path
 
-import imageio.v3 as iio
 import numpy as np
 from libero.libero import benchmark
 
 from scripts.openpi_libero_rollout import (
     DUMMY_ACTION,
     apply_sim_parameters,
+    camera_pose,
     environment,
     perturb_image,
+    render_at_camera_pose,
     state_vector,
+    write_evidence_videos,
 )
 from scripts.replay_source_contract import load_replay_sources
 
@@ -32,12 +34,13 @@ def replay(base: dict, actions: np.ndarray, plan: dict, output: Path) -> dict:
     episode_dir = output / "episodes" / episode_id
     episode_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(int(plan["seed"]))
-    images, wrist_images, states, replay_images, replayed_actions = [], [], [], [], []
+    clean_images, policy_images, wrist_images, states, replayed_actions = [], [], [], [], []
     done = False
     try:
         env.reset()
         initial_states = suite.get_task_init_states(base["task_id"])
         obs = env.set_init_state(initial_states[base["init_state_index"]])
+        observer_pose = camera_pose(env)
         apply_sim_parameters(env, plan)
         obs = env.regenerate_obs_from_state(env.get_sim_state())
         for _ in range(int(base["parameters"].get("wait_steps", 10))):
@@ -45,26 +48,38 @@ def replay(base: dict, actions: np.ndarray, plan: dict, output: Path) -> dict:
         for action in actions:
             image = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
             wrist = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
-            image = perturb_image(image, plan, rng)
-            images.append(image)
+            policy_image = perturb_image(image, plan, rng)
+            clean_image = render_at_camera_pose(env, observer_pose)
+            clean_images.append(clean_image)
+            policy_images.append(policy_image)
             wrist_images.append(wrist)
             states.append(state_vector(obs))
             replayed_actions.append(action)
-            replay_images.append(image)
             obs, _, done, _ = env.step(action.tolist())
             if done:
                 break
         trace_path = episode_dir / "trajectory.npz"
         np.savez_compressed(
             trace_path,
-            image=images,
+            image=policy_images,
+            clean_observer_image=clean_images,
+            policy_image=policy_images,
             wrist_image=wrist_images,
             state=states,
             actions=replayed_actions,
         )
-        video_path = episode_dir / "rollout.mp4"
-        if replay_images:
-            iio.imwrite(video_path, np.asarray(replay_images), fps=10)
+        videos = (
+            write_evidence_videos(
+                episode_dir,
+                clean_images,
+                policy_images,
+                wrist_images,
+                parameters=plan,
+                success=bool(done),
+            )
+            if policy_images
+            else {}
+        )
         return {
             "id": episode_id,
             "task_suite": base["task_suite"],
@@ -85,7 +100,8 @@ def replay(base: dict, actions: np.ndarray, plan: dict, output: Path) -> dict:
             "inference_seconds": 0.0,
             "trace": str(trace_path),
             "trace_sha256": hashlib.sha256(trace_path.read_bytes()).hexdigest(),
-            "video": str(video_path) if replay_images else None,
+            "video": videos.get("diagnostic"),
+            "videos": videos,
             "provenance": {
                 "kind": "successful_action_replay",
                 "source_rollout_id": base["id"],

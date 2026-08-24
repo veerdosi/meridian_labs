@@ -1,0 +1,23 @@
+schema_version: 1
+campaign: pi05-libero10-viewpoint-intervention-v1
+phase: replay_engineering_and_preflight
+accounting_source: pbs_qstat_finished_record
+jobs:
+  - {job_id: 15244724.pbs101, exit_status: 1, walltime_seconds: 1, requested_ngpus: 1, actual_su: 0.0177777778, outcome: wrong_flattened_remote_script_path}
+  - {job_id: 15244733.pbs101, exit_status: 1, walltime_seconds: 2, requested_ngpus: 1, actual_su: 0.0355555556, outcome: wrong_flattened_remote_script_path}
+  - {job_id: 15244741.pbs101, exit_status: 1, walltime_seconds: 2, requested_ngpus: 1, actual_su: 0.0355555556, outcome: wrong_flattened_remote_script_path}
+  - {job_id: 15244773.pbs101, exit_status: 1, walltime_seconds: 526, requested_ngpus: 1, actual_su: 9.3511111111, outcome: unfiltered_combined_result_loader_rejected_unreferenced_failures}
+  - job_id: 15244866.pbs101
+    exit_status: 0
+    walltime_seconds: 783
+    requested_ngpus: 1
+    actual_su: 13.92
+    outcome: provisional_full_dose8_replay_generated_before_real_contract_preflight
+    disposition: Retain but do not train from it while the visual-validity gate is closed.
+  - {job_id: 15244968.pbs101, exit_status: 0, walltime_seconds: 489, requested_ngpus: 1, actual_su: 8.6933333333, outcome: real_cross_job_one_trajectory_preflight_passed}
+phase_actual_su: 32.0533333334
+cumulative_measured_su: 436.9041655521
+scientific_training_su_after_visual_audit: 0
+engineering_conclusion: >-
+  The reusable real cross-job loader contract passed. The independent visual-validity audit
+  vetoes the locked Task 2 target before training.

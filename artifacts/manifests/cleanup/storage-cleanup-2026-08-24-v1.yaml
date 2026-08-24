@@ -1,0 +1,83 @@
+schema_version: 1
+cleanup_id: storage-cleanup-2026-08-24-v1
+date: 2026-08-24
+status: approved_targets_not_yet_deleted
+active_pbs_jobs: []
+reference_graph:
+  locked_task2_design:
+    references:
+      - configs/pi05_libero_viewpoint_intervention_v1.yaml
+      - configs/plans/pi05-libero10-viewpoint-v1/baseline_and_source.jsonl
+      - artifacts/results/pi05-libero10-viewpoint-v1/raw/15244053-rollouts.jsonl
+      - configs/plans/pi05-libero10-viewpoint-v1/dose8
+      - /scratch/users/ntu/veer001/meridian_labs/artifacts/evaluations/pi05-libero10-viewpoint-v1-baseline-source/15244053.pbs101
+      - /scratch/users/ntu/veer001/meridian_labs/artifacts/intervention-data/pi05-libero10-viewpoint-d8-v1/15244866.pbs101
+      - /scratch/users/ntu/veer001/meridian_labs/cache/openpi
+  task1_released_result:
+    references:
+      - artifacts/manifests/campaigns/pi05-spatial-intervention-v2-gate.yaml
+      - artifacts/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-targeted
+  historical_manifests:
+    references:
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-random
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-oracle_targeted
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-targeted
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v1-original_distribution
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-random
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/pi05-spatial-intervention-v2-original_distribution
+      - /scratch/users/ntu/veer001/meridian_labs/checkpoints/meridian_pi05_libero/gate0-15239655
+inventory:
+  local_ssd:
+    artifacts_checkpoints: {allocated_bytes: 9381212160, classification: retain, reason: selected Task 1 checkpoint and only local backup}
+    artifacts_visual_audit: {allocated_bytes_before_cleanup: 148230144, classification: retain_with_verified_duplicate_cleanup, reason: representative evidence retained; three temporary NPZ copies may be removed}
+    artifacts_nscc: {allocated_bytes: 67878912, classification: retain, reason: PBS logs, accounting, JSONL, and representative historical videos}
+    artifacts_test_fixtures: {allocated_bytes: 31490048, classification: retain, reason: real replay integration fixture}
+  nscc:
+    cache_openpi: {allocated_bytes: 12443459584, classification: retain, reason: released checkpoint cache}
+    cache_uv: {allocated_bytes: 7986036736, apparent_bytes: 7879194472, classification: safe_to_delete, reason: regenerable package download/build cache}
+    cache_uv_libero: {allocated_bytes: 4785283072, apparent_bytes: 4726038205, classification: safe_to_delete, reason: superseded regenerable package cache}
+    checkpoints: {allocated_bytes: 74848329728, classification: uncertain_do_not_delete, reason: all non-selected directories remain referenced by historical manifests}
+    datasets: {allocated_bytes: 1236250624, classification: uncertain_do_not_delete, reason: historical datasets remain referenced and have not been independently hash-inventoried}
+    environments: {allocated_bytes: 12764585984, classification: retain, reason: required execution environments}
+    source: {allocated_bytes: 1197338624, classification: retain, reason: OpenPI/LIBERO source required for reproducibility}
+    evaluations: {allocated_bytes: 17792712704, classification: retain, reason: active Task 2 sources plus only surviving historical traces and videos}
+    interventions: {allocated_bytes: 6713884672, classification: retain, reason: actual PBS results, logs, and selected Task 1 evidence}
+    intervention_data: {allocated_bytes: 2298380288, classification: retain, reason: active replay inputs, preflight, and provisional dose-8 data}
+delete_targets:
+  - path: /scratch/users/ntu/veer001/meridian_labs/cache/uv
+    storage: nscc
+    allocated_bytes: 7986036736
+    reason: Regenerable package download/build cache; no active PBS job or manifest references it.
+    recoverability: Recreated by uv from locked dependencies; network download required.
+  - path: /scratch/users/ntu/veer001/meridian_labs/cache/uv-libero
+    storage: nscc
+    allocated_bytes: 4785283072
+    reason: Superseded regenerable package cache; no active PBS job or manifest references it.
+    recoverability: Recreated from the LIBERO environment lock/setup; network download required.
+  - path: /Volumes/VEER/meridian_labs/artifacts/visual-audit/pi05-libero10-viewpoint-v1/raw/task2-canonical-success.npz
+    storage: local_ssd
+    bytes: 36936951
+    sha256: e35c7518e1e6db0e732f4ead0fd415a7c37935a9822f37160a8002943bec08fd
+    reason: Temporary audit copy; MP4/contact evidence retained and source NPZ remains on NSCC.
+    recoverability: Exact remote source retained under PBS job 15244053.
+  - path: /Volumes/VEER/meridian_labs/artifacts/visual-audit/pi05-libero10-viewpoint-v1/raw/task2-target-failure.npz
+    storage: local_ssd
+    bytes: 63770649
+    sha256: 0d6f36f9c17d3b85bfce208648cd9c002874c1abc0dfd3e77bc4dc87ab2576f7
+    reason: Temporary audit copy; synchronized wrist diagnostic/contact evidence retained and source NPZ remains on NSCC.
+    recoverability: Exact remote source retained under PBS job 15244053.
+  - path: /Volumes/VEER/meridian_labs/artifacts/visual-audit/pi05-libero10-viewpoint-v1/raw/task2-target-success.npz
+    storage: local_ssd
+    bytes: 40793507
+    sha256: ef9b489e52253aba5d597b2f7e32fd86bc67dba3b04a456b53137e1e6d04e71a
+    reason: Temporary audit copy; synchronized wrist diagnostic/contact evidence retained and source NPZ remains on NSCC.
+    recoverability: Exact remote source retained under PBS job 15244053.
+protected:
+  broad_delete_globs_used: false
+  active_job_references_found: false
+  manifest_references_to_delete_targets_found: false
+  deletion_requires_this_manifest_committed: true
+reclaimed:
+  local_ssd_bytes: 0
+  nscc_allocated_bytes: 0

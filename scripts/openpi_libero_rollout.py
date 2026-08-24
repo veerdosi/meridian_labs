@@ -17,6 +17,7 @@ from libero.libero import benchmark, get_libero_path
 from libero.libero.envs import OffScreenRenderEnv
 from openpi_client import image_tools
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
+from PIL import Image, ImageDraw
 
 DUMMY_ACTION = np.asarray([0.0] * 6 + [-1.0])
 MAX_STEPS = {
@@ -54,6 +55,106 @@ def apply_sim_parameters(env: OffScreenRenderEnv, parameters: dict[str, float | 
         env.sim.data.qpos[qpos_address] += float(parameters.get("object_x", 0.0))
         env.sim.data.qpos[qpos_address + 1] += float(parameters.get("object_y", 0.0))
     env.sim.forward()
+
+
+def camera_pose(env: OffScreenRenderEnv, name: str = "agentview") -> tuple[np.ndarray, np.ndarray]:
+    """Return a copy of a MuJoCo camera pose so a fixed observer can be restored."""
+    camera_id = env.sim.model.camera_name2id(name)
+    return (
+        np.array(env.sim.model.cam_pos[camera_id], copy=True),
+        np.array(env.sim.model.cam_quat[camera_id], copy=True),
+    )
+
+
+def render_at_camera_pose(
+    env: OffScreenRenderEnv,
+    pose: tuple[np.ndarray, np.ndarray],
+    name: str = "agentview",
+) -> np.ndarray:
+    """Render a diagnostic observer without changing the camera used by the policy."""
+    camera_id = env.sim.model.camera_name2id(name)
+    active_pose = camera_pose(env, name)
+    try:
+        env.sim.model.cam_pos[camera_id] = pose[0]
+        env.sim.model.cam_quat[camera_id] = pose[1]
+        env.sim.forward()
+        image = env.sim.render(camera_name=name, height=256, width=256)
+        return np.ascontiguousarray(image[::-1, ::-1])
+    finally:
+        env.sim.model.cam_pos[camera_id] = active_pose[0]
+        env.sim.model.cam_quat[camera_id] = active_pose[1]
+        env.sim.forward()
+
+
+def diagnostic_frames(
+    clean_images: list[np.ndarray],
+    policy_images: list[np.ndarray],
+    wrist_images: list[np.ndarray],
+    *,
+    parameters: dict[str, float | str],
+    success: bool,
+) -> np.ndarray:
+    """Build synchronized, labelled clean/policy/wrist evidence frames."""
+    if not (len(clean_images) == len(policy_images) == len(wrist_images)):
+        raise ValueError("diagnostic streams must have identical lengths")
+    parameter_text = ", ".join(
+        f"{key}={value}"
+        for key, value in sorted(parameters.items())
+        if key
+        in {
+            "camera_x",
+            "camera_yaw_deg",
+            "brightness",
+            "occlusion",
+            "visual_distractors",
+            "action_noise",
+            "replan_steps",
+        }
+    )
+    header = f"clean observer | exact policy input | wrist    success={success}"
+    frames = []
+    for clean, policy, wrist in zip(clean_images, policy_images, wrist_images):
+        panel = np.concatenate((clean, policy, wrist), axis=1)
+        canvas = Image.new("RGB", (panel.shape[1], panel.shape[0] + 42), "black")
+        canvas.paste(Image.fromarray(panel), (0, 42))
+        draw = ImageDraw.Draw(canvas)
+        draw.text((6, 4), header, fill="white")
+        draw.text((6, 22), parameter_text, fill="white")
+        frames.append(np.asarray(canvas))
+    return np.asarray(frames)
+
+
+def write_evidence_videos(
+    episode_dir: Path,
+    clean_images: list[np.ndarray],
+    policy_images: list[np.ndarray],
+    wrist_images: list[np.ndarray],
+    *,
+    parameters: dict[str, float | str],
+    success: bool,
+) -> dict[str, str]:
+    """Write the four synchronized evidence streams required for every rollout."""
+    videos = {
+        "clean_observer": episode_dir / "clean_observer.mp4",
+        "policy_input": episode_dir / "policy_input.mp4",
+        "wrist": episode_dir / "wrist.mp4",
+        "diagnostic": episode_dir / "diagnostic.mp4",
+    }
+    iio.imwrite(videos["clean_observer"], np.asarray(clean_images), fps=10)
+    iio.imwrite(videos["policy_input"], np.asarray(policy_images), fps=10)
+    iio.imwrite(videos["wrist"], np.asarray(wrist_images), fps=10)
+    iio.imwrite(
+        videos["diagnostic"],
+        diagnostic_frames(
+            clean_images,
+            policy_images,
+            wrist_images,
+            parameters=parameters,
+            success=success,
+        ),
+        fps=10,
+    )
+    return {key: str(path) for key, path in videos.items()}
 
 
 def perturb_image(
@@ -105,13 +206,14 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
     episode_id = plan.get("id", f"task{task_id}-seed{seed}")
     episode_dir = output / "episodes" / str(episode_id)
     episode_dir.mkdir(parents=True, exist_ok=True)
-    observations, wrist_images, states, actions, replay = [], [], [], [], []
+    clean_images, policy_images, wrist_images, states, actions = [], [], [], [], []
     done, failure_phase, inference_seconds = False, "timeout", 0.0
     try:
         env.reset()
         initial_states = suite.get_task_init_states(task_id)
         init_index = int(plan.get("init_state_index", seed % len(initial_states)))
         obs = env.set_init_state(initial_states[init_index])
+        observer_pose = camera_pose(env)
         apply_sim_parameters(env, plan)
         obs = env.regenerate_obs_from_state(env.get_sim_state())
         action_plan: collections.deque = collections.deque()
@@ -125,7 +227,7 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             image = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
             wrist = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
             policy_image = perturb_image(image, plan, rng)
-            replay.append(policy_image)
+            clean_image = render_at_camera_pose(env, observer_pose)
             if not action_plan:
                 element = {
                     "observation/image": image_tools.convert_to_uint8(
@@ -145,7 +247,8 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             noise = float(plan.get("action_noise", 0.0))
             if noise:
                 action[:6] += rng.normal(0.0, noise, 6)
-            observations.append(image)
+            clean_images.append(clean_image)
+            policy_images.append(policy_image)
             wrist_images.append(wrist)
             states.append(state_vector(obs))
             actions.append(action)
@@ -155,11 +258,26 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
                 break
         trace_path = episode_dir / "trajectory.npz"
         np.savez_compressed(
-            trace_path, image=observations, wrist_image=wrist_images, state=states, actions=actions
+            trace_path,
+            image=policy_images,
+            clean_observer_image=clean_images,
+            policy_image=policy_images,
+            wrist_image=wrist_images,
+            state=states,
+            actions=actions,
         )
-        video_path = episode_dir / "rollout.mp4"
-        if replay:
-            iio.imwrite(video_path, np.asarray(replay), fps=10)
+        videos = (
+            write_evidence_videos(
+                episode_dir,
+                clean_images,
+                policy_images,
+                wrist_images,
+                parameters=plan,
+                success=bool(done),
+            )
+            if policy_images
+            else {}
+        )
         trace_hash = hashlib.sha256(trace_path.read_bytes()).hexdigest()
         return {
             "id": episode_id,
@@ -181,7 +299,8 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             "inference_seconds": inference_seconds,
             "trace": str(trace_path),
             "trace_sha256": trace_hash,
-            "video": str(video_path) if replay else None,
+            "video": videos.get("diagnostic"),
+            "videos": videos,
         }
     finally:
         env.close()
