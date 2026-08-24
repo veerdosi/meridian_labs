@@ -20,6 +20,7 @@ from scripts.openpi_libero_rollout import (
     perturb_image,
     state_vector,
 )
+from scripts.replay_source_contract import load_replay_sources
 
 
 def replay(base: dict, actions: np.ndarray, plan: dict, output: Path) -> dict:
@@ -102,13 +103,16 @@ def main() -> None:
     parser.add_argument("--base-rollout", type=Path, required=True)
     parser.add_argument("--plans", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--trace-root", type=Path)
     args = parser.parse_args()
-    all_records = [json.loads(line) for line in args.base_rollout.read_text().splitlines() if line]
-    base_records = [record for record in all_records if record["success"]]
-    if not base_records:
-        raise ValueError("visual intervention replay requires at least one successful source rollout")
-    sources = {record["id"]: record for record in base_records}
     plans = [json.loads(line) for line in args.plans.read_text().splitlines() if line]
+    source_ids = {plan["source_rollout_id"] for plan in plans if plan.get("source_rollout_id")}
+    sources = load_replay_sources(
+        args.base_rollout,
+        required_ids=source_ids or None,
+        trace_root=args.trace_root,
+    )
+    base_records = list(sources.values())
     args.output.mkdir(parents=True, exist_ok=True)
     output_path = args.output / "rollouts.jsonl"
     with output_path.open("w") as stream:

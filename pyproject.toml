@@ -25,7 +25,7 @@ packages = ["src/meridian"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: requires a hydrated real artifact fixture"]
 
 [tool.ruff]
 line-length = 100
-
