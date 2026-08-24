@@ -9,10 +9,11 @@ Essential context:
 - Task 1 completed an end-to-end visual intervention pilot, but retrospective review found
   that its camera/mask condition removed critical observer information. Treat it as qualified
   engineering evidence, not the final scientific demonstration.
-- The LIBERO-10 task-3 viewpoint campaign was vetoed before training because the transformed
-  observer view excluded the robot and drawer goal. It is negative validity evidence only.
-- The real cross-job replay loader passed a one-trajectory preflight, but the visual replay
-  campaign is no longer part of the active final pipeline.
+- The earlier multi-task semantic discovery/validation records are retained as negative engineering
+  evidence: semantic and synthetic visual failures were not sufficiently physical, specific, or
+  causally grounded for the final claim.
+- Detailed Task 2 v1 (`pi05-libero10-viewpoint-*`) artifacts were deliberately removed from live
+  SSD/NSCC storage and from this archive tag. The campaign is not part of the research evidence.
 - Measured cumulative NSCC usage through those campaigns was 436.9041655521 SU.
 - The active final direction uses naturally valid LIBERO initial states, physical simulator
   telemetry, stage-level diagnosis, targeted/random/original data controls, dose stopping,
