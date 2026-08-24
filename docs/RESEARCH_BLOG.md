@@ -1,260 +1,164 @@
-# Can Codex Improve a Robot Policy End to End?
+# We Put Codex Around a Robot Policy and Asked It What Data to Collect
 
-*Building a research harness that turns rollout evidence into a controlled data intervention*
+π0.5 already knew how to control a robot. We gave Codex a harder job: watch the policy work, find a
+repeatable failure, work out what experience might help, choose a small training set, and test that
+choice against other ways of spending the same data budget.
 
-π0.5 can control a robot. It accepts language, two camera views, and robot state, then predicts
-actions. What it cannot do by itself is investigate its own failures. A policy does not decide
-which failure deserves study, determine whether an evaluation is scientifically valid, identify
-the missing experience, construct matched data controls, or stop an experiment when the evidence
-no longer justifies the cost.
+The setup had three parts. π0.5 produced actions from a language instruction, two camera views, and
+robot state. LIBERO and MuJoCo executed those actions with a simulated Panda arm. Codex planned the
+experiments, inspected videos and physical traces, tested explanations for each failure, selected
+data, and managed the evaluation and training runs.
 
-That is the system we set out to build around it.
+## The questions we started with
 
-The central idea is to use Codex as the research agent around a separate robot policy. π0.5 remains
-the controller inside each rollout. Codex works at the level above it: it builds and audits the
-experimental apparatus, reads physical telemetry and visual evidence, forms competing
-explanations, locks evaluation plans before seeing outcomes, selects training data, launches
-bounded simulator and training runs, and updates the research record as evidence arrives.
+Our brief contained three questions.
 
-This is not a claim that a language model becomes a roboticist merely because it can call a shell.
-The harness has to give Codex the right observables, constraints, and tests. It also has to make bad
-reasoning expensive to hide. A proposed diagnosis must agree with the trajectory. A target
-condition must remain solvable. Training arms must use the same checkpoint, data dose, and
-evaluation states. Holdouts must stay untouched. Negative gates must stop spending.
+1. **Where is the gap?** A policy can fail during perception, localization, approach, contact,
+   control, recovery, sequencing, memory, strategy selection, or termination.
+2. **What kind of data is missing?** The missing coverage might involve tasks, objects,
+   environments, viewpoints, initial states, contact states, strategies, recovery, time, or
+   embodiment.
+3. **How much data is enough?** We wanted a marginal improvement curve and a stopping rule, not an
+   open-ended fine-tuning budget.
 
-The ultimate test is empirical. Can the intervention selected by Codex improve target-task returns
-over the released π0.5 checkpoint, equal-dose random data, and equal-dose data from the policy's
-original training distribution, while keeping regression and compute cost within fixed limits?
+A success bit says whether the task finished. It does not say why the robot failed or what data
+would help. We therefore gave Codex synchronized evidence from inside each rollout, fixed state
+partitions, and control experiments that could challenge its diagnosis.
 
-That comparison is still in progress. This article reports the research loop that has already been
-built and the natural policy failure it found. It does not claim the intervention result early.
+## Our first result did not survive its own video
 
-## The division of labor
+The first intervention pilot completed the whole software path. We created a visual condition,
+collected targeted trajectories, trained controlled variants, and measured a numerical gain. Then
+we inspected representative videos.
 
-The system contains two different kinds of intelligence, and confusing them would make the result
-hard to interpret.
+A black mask covered roughly a quarter of the observer image. A camera transform pushed the robot,
+the manipulated bowl, and the goal plate outside the observer field of view. The policy also used a
+wrist-camera stream that our evidence video had not recorded. We could not establish that the
+target condition preserved enough information to perform the task, and we could not inspect every
+image the policy had used.
 
-**π0.5 is the robot policy.** During a LIBERO rollout, it receives the task instruction, the
-canonical observer image, the wrist-camera image, and proprioceptive state. It returns action
-chunks that are executed in MuJoCo. It does not inspect aggregate experiment results or modify its
-own training set.
+We dropped the result. The training code had run correctly, but the experiment had removed
+information the robot needed.
 
-**Codex is the research agent.** It does not generate the robot's actions. It operates the loop
-around the policy:
+Codex changed the protocol after the audit. A candidate condition now has to keep the robot,
+manipulated object, receptacle, and goal region visible enough to act. Every rollout records the
+exact policy input alongside the clean observer view and wrist view. Before a failure can become a
+training target, it must repeat, survive simple control probes, and point to a specific kind of
+missing experience.
 
-1. define a bounded search over tasks and simulator states;
-2. validate that the observations and task conditions preserve the information needed to act;
-3. inspect videos, goal predicates, contacts, object motion, and robot trajectories;
-4. distinguish observable failure stages and maintain competing explanations;
-5. lock confirmation thresholds, seeds, partitions, and stopping rules before inspecting the next
-   outcomes;
-6. choose a data intervention that follows from the evidence;
-7. construct matched targeted, random, and original-distribution training arms;
-8. orchestrate simulator, conversion, training, and evaluation jobs within explicit cost bounds;
-9. compute paired outcomes, uncertainty, regression, and marginal return per added trajectory; and
-10. preserve the evidence needed for a human to audit the conclusion.
+That false start changed the rest of the project. From then on, the video had to support the claim
+before we spent compute training a fix.
 
-The human sets the high-level research objective and can challenge a decision. The harness turns
-that objective into an executable protocol and gives Codex enough structured evidence to reason
-like an ML and robotics experimenter rather than a job scheduler.
+## Rebuilding the rollout record
 
-The distinction also defines the baseline. "Model alone" means the released π0.5 checkpoint under
-canonical control. Any gain from the full system must come from a better research decision about
-data, not from changing the evaluator or quietly making the task easier.
+We made every rollout save four synchronized visual streams:
 
-## What the research agent must decide
+1. the clean observer view;
+2. the exact observer image sent to π0.5;
+3. the wrist-camera image sent to π0.5; and
+4. a diagnostic video with the views, rollout parameters, and final outcome together.
 
-Our original brief was not "fine-tune π0.5 on a failing task." It asked three linked questions.
-
-### Where is the capability gap?
-
-A task success bit is the final symptom, not the mechanism. A useful diagnosis needs to localize
-the observable failure to perception, localization, approach, contact, control, recovery,
-sequencing, memory, strategy selection, or termination. The categories are not labels to paste
-onto a video. Each needs physical evidence and should retain ambiguity when several explanations
-fit.
-
-### What experience is missing?
-
-Possible deficiencies include task, object, environment, viewpoint, initial-state, contact-state,
-strategy, recovery, temporal, and embodiment diversity. "More data" is not a useful answer. A data
-proposal must follow from the diagnosed behavior and make a prediction that equal-dose controls
-can falsify.
-
-### How much is required?
-
-The useful quantity is the smallest data dose that changes the behavior reliably without causing
-unacceptable regression. That means measuring marginal improvement and saturation. A successful
-small dose should not automatically authorize a larger one, and a failed dose should not trigger
-unbounded training.
-
-Together, these decisions create the loop we want Codex to execute:
-
-> measure competence, diagnose a repeatable mechanism, run cheap discriminating controls, select
-> data, train matched variants, evaluate target gain and regression, then decide whether another
-> dose is justified
-
-The scientific contribution is the closed loop, not any single script inside it.
-
-## A false start taught the harness what to distrust
-
-Our first completed intervention looked encouraging on a score table. We had created a visual
-condition, collected targeted trajectories, trained variants, and measured an improvement. The
-software path from rollout to fine-tuning worked.
-
-Then Codex performed the visual audit that the initial pipeline should have required.
-
-In representative target rollouts, a black mask removed roughly a quarter of the observer image.
-A camera transform also pushed the robot, manipulated bowl, and goal plate outside the observer
-field of view. Worse, the policy received a wrist-camera stream that the old evidence video had
-not recorded. We could not verify exactly what information the policy retained.
-
-The numerical result was therefore not evidence of the robustness claim we wanted to make. The
-condition partly deleted the task rather than revealing a meaningful boundary within it. This was
-the most important early lesson: a complete pipeline can still produce an invalid experiment.
-
-We kept that false start as a methodological lesson, not as empirical support. It changed the
-harness in three ways.
-
-First, intervention validity became a gate. The robot, manipulated object, receptacle, and goal
-region must remain meaningfully observable. A difficult input is useful; an information-destroying
-input is not.
-
-Second, every rollout now has to expose the exact inputs used by the policy. An observer render is
-not an adequate substitute for the image tensor that drove action prediction.
-
-Third, a deterministic selector became one input to judgment rather than an authority. A frequent
-failure is not automatically a good scientific target. The candidate also needs canonical
-competence or a clearly defined out-of-distribution comparison, repeatability, intervention
-headroom, controlled persistence, a specific coverage hypothesis, and low expected coverage from
-random data.
-
-This is where the harness became a research instrument rather than automation around a benchmark.
-
-## Making robot behavior legible to Codex
-
-Codex can only reason from the evidence the runtime records. We therefore hardened each rollout to
-save synchronized visual and physical streams.
-
-The visual record contains:
-
-1. the clean, unperturbed observer view;
-2. the exact observer image supplied to π0.5;
-3. the wrist-camera image supplied to π0.5; and
-4. a side-by-side diagnostic video with task parameters and success metadata.
-
-The physical record contains actions, robot state, MuJoCo joint positions, object poses,
-robot-scene contacts, and the exact LIBERO BDDL goal predicates at every step. Initial simulator
-states, trajectory records, and plans are hashed. State partitions and seeds are versioned before
-outcome inspection.
+We also recorded actions, robot state, MuJoCo joint positions, object poses, robot-scene contacts,
+and the exact LIBERO BDDL goal predicates at every step. The harness hashes initial simulator
+states, plans, and trajectory records. It versions seeds and state partitions before Codex sees the
+outcomes.
 
 ![A three-panel preflight montage showing the clean observer view, exact policy input, and wrist-camera view.](../artifacts/physical-preflight/15246052/diagnostic-montage.png)
 
-*Figure 1. The recording preflight. The clean observer view and policy input are identical because
-the current campaign uses canonical images. The wrist view is the second visual stream consumed by
-π0.5. This run verified synchronization, finite actions and state, contact telemetry, object
-telemetry, and exact task predicates. It was an engineering check, not a scientific result.*
+_Figure 1. The recording preflight. This campaign uses canonical images, so the clean observer view
+and policy input match. The wrist view is π0.5's second visual input. We checked synchronization,
+finite actions and state, contacts, object motion, and task predicates before starting the screen._
 
-The combination matters. Video lets a researcher judge visibility and intent, but it is an
-imprecise contact sensor. Telemetry can show that an object translated 20 centimetres, but it
-cannot tell us whether the visual behavior looks coherent. Codex reads both. Any automated
-diagnosis has to cite quantities that a person can compare against the synchronized rollout.
+Video shows whether the right object remains visible and what the motion looks like. Joint and
+contact traces measure which body moved, when contact began, and whether a completed relation later
+broke. Codex uses both when it diagnoses a rollout.
 
-The diagnostic layer uses conservative observable patterns:
+The first diagnostic rules covered concrete patterns:
 
-- end-effector motion without robot-scene contact;
+- end-effector motion without contact;
 - contact without meaningful object motion;
-- meaningful target motion followed by loss of the achieved relation;
+- target motion followed by loss of an achieved relation;
 - target-object motion versus distractor-object motion; and
-- physical progress without satisfaction of the exact goal predicate.
+- physical progress without satisfaction of the BDDL predicate.
 
-These observations can localize a failure stage. They cannot, by themselves, prove why the model
-learned that behavior. A causal data claim requires repetition, controlled probes, and a matched
-intervention.
+These measurements let Codex narrow a failure to a stage of the task, then use a control run to
+separate plausible causes.
 
-The first analysis of the new traces exposed a subtle implementation error. It summarized the
-most-moved free object in each scene. On a relational task, the most-moved object can be exactly the
-wrong object. Codex caught the conflict between the summary, the goal predicate, and the video.
-The extractor now derives the intended target from the BDDL predicate and measures target and
-distractor motion separately. Integration coverage uses real rollout records in addition to
-synthetic fixtures, so the research code is tested against the schema it actually analyzes.
+## Screening 60 natural initial states
 
-This is a small engineering detail with a large scientific consequence. Without target-aware
-telemetry, the same trajectory could be misclassified as manipulation progress rather than object
-selection failure.
+After the recording preflight, we ran π0.5 on 60 natural initial states. The screen contained ten
+tasks with six states per task. We selected two tasks from each of LIBERO Spatial, Object, Goal,
+LIBERO-10, and LIBERO-90.
 
-## Searching broadly without searching indefinitely
+All 60 rollouts used canonical observations and canonical π0.5 control. We applied no masks, camera
+transforms, or image post-processing. Before inference, a state-only inventory checked 500 initial
+states, 50 per task, and confirmed that none began with its goal already satisfied.
 
-Once the instrument passed its preflight, Codex ran a bounded screen over 60 natural LIBERO
-initial states. The design covered ten tasks with six states per task. Two tasks came from each of
-LIBERO Spatial, Object, Goal, LIBERO-10, and LIBERO-90.
+We separated the states before looking at results:
 
-All rollouts used canonical observations and canonical π0.5 control. There was no mask, image
-post-processing, or camera transform. Before policy inference, a state-only inventory checked 500
-predefined initial states, 50 per task, and confirmed that none began with its goal already
-satisfied.
+| Partition         | Role                            | State indices                    |
+| ----------------- | ------------------------------- | -------------------------------- |
+| Discovery         | Find a candidate behavior       | 0, 3, 6, 9, 12, 15               |
+| Confirmation      | Probe the selected behavior     | 18 and 21 for each selected task |
+| Training source   | Supply candidate demonstrations | 25 to 39                         |
+| Untouched holdout | Measure final target return     | 40 to 49                         |
 
-The state partitions were fixed before outcomes were inspected:
+π0.5 completed 48 of the 60 discovery rollouts. The task-level split was sharper than the overall
+80 percent success rate:
 
-| Partition | Role in the experiment | State indices |
-| --- | --- | --- |
-| Discovery | Locate a candidate behavior | 0, 3, 6, 9, 12, 15 |
-| Confirmation | Test the selected mechanism under controls | 18 and 21 for each selected task |
-| Training source | Candidate demonstration pool | 25 to 39 |
-| Untouched holdout | Final target evaluation | 40 to 49 |
+| Suite          | Task                                          | Successes |
+| -------------- | --------------------------------------------- | --------: |
+| LIBERO Spatial | black bowl between plate and ramekin to plate |       6/6 |
+| LIBERO Spatial | black bowl from top drawer to plate           |       6/6 |
+| LIBERO Object  | alphabet soup to basket                       |       6/6 |
+| LIBERO Object  | milk to basket                                |       6/6 |
+| LIBERO Goal    | open the middle drawer                        |       6/6 |
+| LIBERO Goal    | cream cheese to bowl                          |       6/6 |
+| LIBERO-10      | turn on stove, then place moka pot            |       6/6 |
+| LIBERO-10      | book to back compartment of caddy             |       6/6 |
+| LIBERO-90      | frying pan to stove                           |       0/6 |
+| LIBERO-90      | white bowl to right of plate                  |       0/6 |
 
-The screen and final evaluation answer different questions. Discovery is allowed to select a
-hypothesis. The untouched holdout is not. Once the target mechanism and training arms are fixed,
-the holdout measures whether the intervention transfers beyond the trajectories used to select
-and train it.
+Our first scoring rule looked for a physical boundary within a task, such as object poses that
+separated successful and failed states. It expected a mix of successes and failures. These two
+tasks scored poorly because each was 0/6, even though they contained every failure in the screen.
 
-π0.5 succeeded on 48 of 60 discovery rollouts. The aggregate 80 percent score was less informative
-than the task-level structure:
+Codex stopped the pose search and opened the traces. The robot used the full 400-step horizon in
+every failed rollout. Its end effector travelled about 1.1 to 1.8 metres, and it spent substantial
+time in contact with objects. The failures contained purposeful motion, so we followed that motion.
 
-| Suite | Task | Canonical successes |
-| --- | --- | ---: |
-| LIBERO Spatial | black bowl between plate and ramekin to plate | 6/6 |
-| LIBERO Spatial | black bowl from top drawer to plate | 6/6 |
-| LIBERO Object | alphabet soup to basket | 6/6 |
-| LIBERO Object | milk to basket | 6/6 |
-| LIBERO Goal | open the middle drawer | 6/6 |
-| LIBERO Goal | cream cheese to bowl | 6/6 |
-| LIBERO-10 | turn on stove, then place moka pot | 6/6 |
-| LIBERO-10 | book to back compartment of caddy | 6/6 |
-| LIBERO-90 | frying pan to stove | 0/6 |
-| LIBERO-90 | white bowl to right of plate | 0/6 |
+## The first diagnosis measured the wrong object
 
-The initial selector had been designed to find a within-task physical boundary, so it expected a
-mixture of successful and failed states inside one task. Under that narrow specification, the two
-0/6 tasks did not qualify. They had no local success side from which to infer a pose threshold.
+Our diagnostic code initially summarized the most-moved free object in the scene. That is a
+reasonable generic motion feature, but it is wrong for a relational task when the policy
+manipulates a distractor. The summary can call the rollout "progress" precisely because the wrong
+object moved.
 
-Codex did not lower the threshold to manufacture a winner, and it did not discard the observations
-just because they violated the selector's assumptions. It inspected the physical traces and asked
-whether the pair represented a different, more useful kind of capability gap.
+The videos and BDDL predicates exposed the mismatch. Codex changed the extractor to read the target
+object from the goal predicate, match it to the corresponding MuJoCo joint, and report target and
+distractor displacement separately. We added integration coverage using actual rollout records and
+trajectory archives, not only synthetic fixtures.
 
-## The policy knew how to manipulate, but selected the wrong role
+After the correction, the same pattern appeared in both tasks: the commanded object stayed nearly
+still while another object moved.
 
-The 12 failed episodes were not cases where the robot remained still. Every rollout reached the
-full 400-step horizon. The end effector travelled approximately 1.1 to 1.8 metres, and
-robot-scene contact occupied substantial portions of the trajectories. The released policy could
-approach and manipulate objects in these scenes. It was repeatedly choosing the wrong object.
+## What the robot actually did
 
-For **"put the frying pan on the stove,"** the BDDL predicate identifies the frying pan as the
-target. Across all six discovery states, the frying pan's measured translation was effectively
-zero. In five trials, the moka pot moved beyond the locked 2.5-centimetre diagnostic threshold,
-with displacement of approximately 19 to 30 centimetres. In the sixth, it moved 2.43 centimetres.
-That trial remains ambiguous rather than being rounded into the clean category.
+For **"put the frying pan on the stove,"** the BDDL predicate names the frying pan as the target.
+The frying pan's translation was effectively zero in all six discovery states. In five trials the
+moka pot moved beyond the locked 2.5-centimetre diagnostic threshold, travelling about 19 to 30
+centimetres. It moved 2.43 centimetres in the remaining trial, which we keep as ambiguous rather
+than rounding upward.
 
-For **"put the white bowl to the right of the plate,"** the white bowl is the target and the plate
-is the reference. In five of six trials, the bowl moved less than one millimetre while the plate
-moved approximately 3.4 to 22 centimetres. Both objects moved in the sixth trial, so that episode
-also remains an ambiguous variant.
+For **"put the white bowl to the right of the plate,"** the predicate assigns the white bowl as the
+target and the plate as the reference. In five trials the bowl moved less than one millimetre while
+the plate moved about 3.4 to 22 centimetres. Both objects moved in the sixth trial, so that trace is
+also ambiguous.
 
 ![Representative frames from the two failed tasks, showing the requested target and the object the policy actually manipulated.](../artifacts/physical-campaign/screening/15246322/representative-videos/failure-montage.png)
 
-*Figure 2. Representative canonical failures. The inputs are not visually perturbed. In the
-frying-pan task, π0.5 repeatedly interacts with the moka pot. In the bowl-plate task, it moves the
-plate instead of treating the plate as the reference object.*
+_Figure 2. Canonical failures from the two selected tasks. π0.5 interacts with the moka pot instead
+of the frying pan, and moves the plate instead of treating it as the relational reference._
 
 Representative synchronized rollouts:
 
@@ -263,87 +167,87 @@ Representative synchronized rollouts:
 - [White bowl to right of plate, discovery state 0](../artifacts/physical-campaign/screening/15246322/representative-videos/screen-libero_90-t37-i0-diagnostic.mp4)
 - [White bowl to right of plate, discovery state 9](../artifacts/physical-campaign/screening/15246322/representative-videos/screen-libero_90-t37-i9-diagnostic.mp4)
 
-Ten of the 12 failures satisfy the strict shared signature: negligible target motion with
-substantial distractor or reference motion. Two remain explicitly ambiguous. We call the candidate
-mechanism **object selection or relation-role binding**. This name describes the behavior, not an
-unobserved circuit inside the network. π0.5 appears capable of the required low-level interaction,
-but it often assigns the instruction's manipulated-object role to the wrong entity.
+Ten of the 12 failures meet the strict signature: negligible target motion and substantial motion
+of the distractor or reference. We marked the other two as ambiguous. Across the two tasks, π0.5
+approaches, contacts, and moves an object, but chooses the wrong one.
 
-Several explanations still fit. The language grounding could be weak. The policy could be reusing
-a familiar but inappropriate task strategy. The 400-step horizon might be too short for eventual
-recovery. The action-chunk replanning interval could prevent correction after an early choice. The
-confirmation experiment is designed to discriminate these alternatives before training consumes
-substantial compute.
+Several causes could produce that behavior. The policy may bind the nouns in the instruction to
+the wrong objects, or reuse a familiar strategy that starts with the moka pot or plate. It may also
+correct the early choice if given more time or a different replanning interval. We reserved unseen
+states to test those possibilities before training.
 
-If the wrong-object behavior persists, the data hypothesis becomes precise. The missing coverage
-is not generic robot motion and not simply more images of frying pans or bowls. It is successful
-experience that distinguishes the manipulated target from a distractor or relational reference,
-under the exact task instructions and across both tasks.
+## Choosing the corrective data
 
-## Turning the diagnosis into a falsifiable data intervention
-
-The harness must do more than find an interesting failure. It must test whether its diagnosis
-selects better data than simpler policies for spending the same data budget.
-
-The planned comparison starts every arm from the same released π0.5 checkpoint and holds training
-settings constant. Only the added demonstrations differ:
-
-| Arm | Added experience | Question it answers |
-| --- | --- | --- |
-| Released checkpoint | None | What return does π0.5 achieve without intervention? |
-| Targeted | Balanced successful demonstrations from the two selected tasks | Does data chosen from the diagnosed gap repair the behavior efficiently? |
-| Random | The same number of randomly selected demonstrations | Would an arbitrary equal-sized dataset produce the same gain? |
-| Original distribution | The same number of familiar π0.5-style LIBERO demonstrations | Is the effect merely additional in-distribution fine-tuning? |
+If the behavior persists under those controls, we will train on successful executions of these
+exact instructions. Those examples show which object plays each role while preserving the
+approach, grasp, transport, and placement behavior π0.5 already uses.
 
 ### Where the demonstrations come from
 
-Codex does not invent the low-level action sequence, teleoperate the robot, or autonomously solve a
-failed task to create a label. Its contribution is deciding what successful experience the policy
-needs and making that decision testable.
+LIBERO already provides 50 human-teleoperated MuJoCo demonstrations for each of the two tasks. We
+downloaded the two task files from the official dataset and verified every source file by hash. We
+also checked that the recorded episodes end with the real LIBERO success predicate satisfied.
 
-The candidate targeted trajectories come from LIBERO's official human-teleoperated demonstrations.
-In those records, a human operator controlled the simulated Panda in MuJoCo and completed the task
-successfully. For this intervention, Codex diagnosed the shared wrong-object behavior and specified
-balanced exact-task coverage: successful frying-pan-to-stove and bowl-to-the-right-of-plate
-trajectories, with equal representation from both tasks. Training sources are kept separate from
-the predefined confirmation and untouched holdout states, so the final evaluation cannot reuse the
-episodes that supplied the corrective behavior.
+Human operators created the motor commands in these demonstrations. Codex chooses which successful
+episodes answer the diagnosed failure. The selector draws a balanced set from the two task files,
+keeps it separate from confirmation and holdout states, and spreads the selected episodes across
+the available starting geometries. The conversion step preserves the action, robot-state,
+observer-camera, and wrist-camera streams in π0.5's training format. During the preflight we found
+that the raw HDF5 camera arrays need a double flip to match the canonical images seen by π0.5, so
+the converter now verifies orientation as well as shapes and values.
 
-The harness then handles the data contract around those demonstrations. It validates task identity,
-success, trajectory integrity, camera and robot-state streams, and action shape. It records source
-provenance and hashes, then converts the selected records into the observation, language, action,
-and episode structure expected by the π0.5 training stack. This conversion is checked before a
-full training allocation is allowed. A valid demonstration is therefore an existing successful
-robot trajectory chosen for a reason, not an action trace authored by Codex.
+Humans supplied successful control trajectories in the simulator. Codex found the behavioral
+pattern, chose the relevant subset, and will test whether that subset buys more improvement than
+an equal number of randomly chosen or original-distribution demonstrations.
 
-The two control arms differ only in how the same demonstration budget is spent. The random arm
-will draw the same number of successful trajectories from a locked eligible comparison pool,
-without using the diagnosed object-role criterion. The original-distribution arm will draw the
-same number from the familiar LIBERO task distribution used by the released policy. Their exact
-records and hashes belong in the locked data manifest once selection is complete, so we do not
-name files before that decision exists.
+### A future experiment without human demonstrations
 
-This is what separates a test of **data value** from generic fine-tuning. All trained arms begin at
-the same checkpoint and use the same number of demonstrations, optimizer schedule, training
-budget, and evaluation states. If the targeted arm performs better, the distinguishing variable is
-the information selected from the diagnosis. If all three improve similarly, the evidence favors
-ordinary additional fine-tuning rather than intelligent data selection.
+Some future environments will not come with successful demonstrations. In that case, the harness
+would first need a simulator expert that can produce and verify the corrective trajectories. For
+tasks like these, Codex could construct a task-specific scripted expert using MuJoCo's privileged
+state:
 
-The target arm is balanced across the frying-pan and bowl-plate tasks so that one task cannot
-dominate the update. Dose 4 is evaluated first. Dose 8 is conditional on the locked dose-4 gate,
-including target gain and regression. This provides a minimal marginal-return curve instead of
-assuming that twice the data must be better.
+1. Parse the LIBERO goal predicate to identify the target object and destination.
+2. Read the exact target and receptacle poses from MuJoCo.
+3. Generate a collision-safe approach pose above the correct object.
+4. Use inverse kinematics or LIBERO's operational-space controller to approach, grasp, lift,
+   transport, and place.
+5. Verify success using the real BDDL goal predicate.
+6. Reject unsuccessful or unstable trajectories.
+7. Record observer images, wrist images, robot state, actions, contacts, and provenance in π0.5's
+   training format.
+8. Add controlled variation across training-only object poses and robot initial states.
 
-The final target evaluation uses 40 untouched trials, balanced across the two tasks. A separate
-20-trial regression plan measures whether specialization damages established capabilities. The
-analysis uses paired outcomes where the arms share initial states, Wilson intervals for binomial
-success rates, and actual training plus evaluation cost. The stopping decision considers both
-absolute target return and the improvement obtained per additional demonstration.
+The success predicate provides the acceptance test for each generated trajectory. Only successful,
+stable executions would enter the training set. Building and validating this expert is a separate
+experiment, but the telemetry and data-conversion path already in the harness are the pieces it
+would rely on.
 
-This is the point of putting Codex inside a constrained harness. Codex can infer a data strategy
-from rich evidence, but the experiment does not accept that strategy on authority. It compares the
-strategy against alternatives that could explain the same gain. If targeted data does not beat the
-controls, the correct conclusion is that the diagnosis did not produce a superior intervention.
+## The matched experiment
+
+Every trained arm starts from the same released π0.5 checkpoint. We keep the demonstration count,
+optimizer schedule, training budget, and evaluation states fixed. Only the source of the added data
+changes.
+
+| Arm                   | Added data                                                           | Measurement                                     |
+| --------------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| Released checkpoint   | None                                                                 | Return from π0.5 without added training         |
+| Targeted              | Balanced successful examples from the two diagnosed tasks            | Value of data selected from the trace diagnosis |
+| Random                | An equal number of successful examples sampled without the diagnosis | Value of generic extra demonstrations           |
+| Original distribution | An equal number from π0.5's familiar LIBERO distribution             | Value of more in-distribution fine-tuning       |
+
+The random arm uses the same number of trajectories, sampled without the object-selection
+diagnosis. The original-distribution arm uses the same number from tasks already familiar to the
+released checkpoint. We fix all source records before training.
+
+We evaluate dose 4 first. Dose 8 runs only if dose 4 passes the locked target-gain and regression
+gate. Final target evaluation uses 40 untouched trials, balanced across the two tasks. A separate
+20-trial plan measures regression on established capabilities. Shared initial states support
+paired comparisons, and Wilson intervals show uncertainty around each binomial success rate.
+
+The final table will compare target return, regression, added trajectories, and compute for the
+released, targeted, random, and original-distribution arms. The relative results will tell us
+whether the diagnosed examples were a better use of the data budget.
 
 ## Confirmation on unseen states
 
