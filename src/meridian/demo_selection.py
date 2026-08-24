@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
 
 
-def select_partitioned_maximin(
+def _partition_candidates(
     demo_features: Mapping[str, Sequence[float]],
     inventory_features: Mapping[int, Sequence[float]],
     *,
     allowed_indices: Sequence[int],
     forbidden_indices: Sequence[int],
-    count: int,
+    deduplicate_states: bool,
 ) -> list[dict[str, Any]]:
-    """Map demos to natural states, exclude protected partitions, then space-fill."""
-    if count < 1:
-        raise ValueError("count must be positive")
     inventory_indices = sorted(int(index) for index in inventory_features)
     inventory = np.asarray([inventory_features[index] for index in inventory_indices], dtype=float)
     if inventory.ndim != 2 or inventory.shape[1] == 0:
@@ -34,6 +32,7 @@ def select_partitioned_maximin(
     normalized_inventory = inventory[:, variable] / ranges[variable]
 
     nearest_by_state: dict[int, dict[str, Any]] = {}
+    candidates = []
     for identifier in sorted(demo_features):
         feature = np.asarray(demo_features[identifier], dtype=float)
         if feature.shape != (inventory.shape[1],):
@@ -50,13 +49,36 @@ def select_partitioned_maximin(
             "nearest_normalized_distance": float(distances[nearest_offset]),
             "normalized_feature": normalized,
         }
+        if not deduplicate_states:
+            candidates.append(candidate)
+            continue
         previous = nearest_by_state.get(nearest_index)
         if previous is None or (
             (candidate["nearest_normalized_distance"], identifier)
             < (previous["nearest_normalized_distance"], previous["demo"])
         ):
             nearest_by_state[nearest_index] = candidate
-    candidates = list(nearest_by_state.values())
+    return list(nearest_by_state.values()) if deduplicate_states else candidates
+
+
+def select_partitioned_maximin(
+    demo_features: Mapping[str, Sequence[float]],
+    inventory_features: Mapping[int, Sequence[float]],
+    *,
+    allowed_indices: Sequence[int],
+    forbidden_indices: Sequence[int],
+    count: int,
+) -> list[dict[str, Any]]:
+    """Map demos to natural states, exclude protected partitions, then space-fill."""
+    if count < 1:
+        raise ValueError("count must be positive")
+    candidates = _partition_candidates(
+        demo_features,
+        inventory_features,
+        allowed_indices=allowed_indices,
+        forbidden_indices=forbidden_indices,
+        deduplicate_states=True,
+    )
     if len(candidates) < count:
         raise ValueError(f"only {len(candidates)} partition-safe unique demos; {count} required")
 
@@ -81,6 +103,46 @@ def select_partitioned_maximin(
         )
         selected.append(chosen)
         remaining.remove(chosen)
+    return [
+        {key: value for key, value in item.items() if key != "normalized_feature"}
+        for item in selected
+    ]
+
+
+def select_partitioned_random(
+    demo_features: Mapping[str, Sequence[float]],
+    inventory_features: Mapping[int, Sequence[float]],
+    *,
+    allowed_indices: Sequence[int],
+    forbidden_indices: Sequence[int],
+    excluded_demos: Sequence[str],
+    count: int,
+    seed: int,
+) -> list[dict[str, Any]]:
+    """Select a seeded uniform-rank control from the same partition-safe task pool."""
+    if count < 1:
+        raise ValueError("count must be positive")
+    excluded = {str(identifier) for identifier in excluded_demos}
+    candidates = [
+        item
+        for item in _partition_candidates(
+            demo_features,
+            inventory_features,
+            allowed_indices=allowed_indices,
+            forbidden_indices=forbidden_indices,
+            deduplicate_states=False,
+        )
+        if item["demo"] not in excluded
+    ]
+    if len(candidates) < count:
+        raise ValueError(f"only {len(candidates)} unused partition-safe demos; {count} required")
+    selected = sorted(
+        candidates,
+        key=lambda item: (
+            hashlib.sha256(f"{seed}:{item['demo']}".encode()).hexdigest(),
+            item["demo"],
+        ),
+    )[:count]
     return [
         {key: value for key, value in item.items() if key != "normalized_feature"}
         for item in selected

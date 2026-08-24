@@ -1,0 +1,28 @@
+{
+  "dataset": {
+    "repository": "yifengzhu-hf/LIBERO-datasets",
+    "revision": "f13aa24a3da8c43c7225569f28c562979fa0e35a",
+    "source": "official LIBERO human-teleoperated MuJoCo demonstrations"
+  },
+  "schema": "meridian-task-role-source-registry-v1",
+  "tasks": [
+    {
+      "distractor_qpos_address": 16,
+      "source": "/scratch/users/ntu/veer001/meridian_labs/datasets/libero-official/libero_90/KITCHEN_SCENE3_put_the_frying_pan_on_the_stove_demo.hdf5",
+      "source_sha256": "e5a4de96e0b38f1ad7cedae0fe1fab762f258cefada076a46e3ecb4fc07a8ee5",
+      "suite": "libero_90",
+      "target_qpos_address": 9,
+      "task": "put the frying pan on the stove",
+      "task_id": 18
+    },
+    {
+      "distractor_qpos_address": 16,
+      "source": "/scratch/users/ntu/veer001/meridian_labs/datasets/libero-official/libero_90/KITCHEN_SCENE7_put_the_white_bowl_to_the_right_of_the_plate_demo.hdf5",
+      "source_sha256": "4b5152e0d26fc7de67f6cff029ada46805892f57fb2d6d1b298bd35603bf8ffd",
+      "suite": "libero_90",
+      "target_qpos_address": 9,
+      "task": "put the white bowl to the right of the plate",
+      "task_id": 37
+    }
+  ]
+}

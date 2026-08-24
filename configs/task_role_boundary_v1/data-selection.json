@@ -1,0 +1,120 @@
+{
+  "config": "/scratch/users/ntu/veer001/meridian_labs/harness/configs/task_role_boundary_v1.yaml",
+  "config_sha256": "7593858a76ae3baf99d48560068de6698c785f4c45711f233776e3144e08bca6",
+  "inventory": "/scratch/users/ntu/veer001/meridian_labs/artifacts/state-inventory/physical-boundary-v1-inventory-20260824-r3/15246325.pbs101/initial-states.jsonl",
+  "inventory_sha256": "a3ef94afe184ba5974ca6ecdd3f6ad614b8a4b329337576e6ee6367f03cfd55d",
+  "nested_doses": true,
+  "random_control": "same tasks and partition-safe pool; seeded rank without geometry score",
+  "random_seed": 91501,
+  "schema": "meridian-task-role-targeted-selection-v1",
+  "sources": "/scratch/users/ntu/veer001/meridian_labs/harness/configs/task_role_boundary_v1/sources.json",
+  "sources_sha256": "669a43c3a3dba8db0769441fbb4ae47a897e1c2617ed752e487456d0e23e7fe0",
+  "tasks": [
+    {
+      "distractor_qpos_address": 16,
+      "random_selected": [
+        {
+          "demo": "demo_5",
+          "nearest_init_state_index": 33,
+          "nearest_normalized_distance": 0.21589216902990102
+        },
+        {
+          "demo": "demo_24",
+          "nearest_init_state_index": 36,
+          "nearest_normalized_distance": 0.2451493733200474
+        },
+        {
+          "demo": "demo_30",
+          "nearest_init_state_index": 30,
+          "nearest_normalized_distance": 0.1884565380590821
+        },
+        {
+          "demo": "demo_41",
+          "nearest_init_state_index": 39,
+          "nearest_normalized_distance": 0.35788653917417745
+        }
+      ],
+      "selected": [
+        {
+          "demo": "demo_2",
+          "nearest_init_state_index": 36,
+          "nearest_normalized_distance": 0.08236659810359329
+        },
+        {
+          "demo": "demo_16",
+          "nearest_init_state_index": 26,
+          "nearest_normalized_distance": 0.39148416022726545
+        },
+        {
+          "demo": "demo_49",
+          "nearest_init_state_index": 39,
+          "nearest_normalized_distance": 0.1943976228203306
+        },
+        {
+          "demo": "demo_13",
+          "nearest_init_state_index": 35,
+          "nearest_normalized_distance": 0.23610005804678588
+        }
+      ],
+      "source": "/scratch/users/ntu/veer001/meridian_labs/datasets/libero-official/libero_90/KITCHEN_SCENE3_put_the_frying_pan_on_the_stove_demo.hdf5",
+      "source_sha256": "e5a4de96e0b38f1ad7cedae0fe1fab762f258cefada076a46e3ecb4fc07a8ee5",
+      "suite": "libero_90",
+      "target_qpos_address": 9,
+      "task": "put the frying pan on the stove",
+      "task_id": 18
+    },
+    {
+      "distractor_qpos_address": 16,
+      "random_selected": [
+        {
+          "demo": "demo_26",
+          "nearest_init_state_index": 26,
+          "nearest_normalized_distance": 0.2455200343510994
+        },
+        {
+          "demo": "demo_49",
+          "nearest_init_state_index": 32,
+          "nearest_normalized_distance": 0.4068520756873395
+        },
+        {
+          "demo": "demo_37",
+          "nearest_init_state_index": 32,
+          "nearest_normalized_distance": 0.2809914053489256
+        },
+        {
+          "demo": "demo_2",
+          "nearest_init_state_index": 31,
+          "nearest_normalized_distance": 0.297884513954721
+        }
+      ],
+      "selected": [
+        {
+          "demo": "demo_48",
+          "nearest_init_state_index": 30,
+          "nearest_normalized_distance": 0.1402268863852917
+        },
+        {
+          "demo": "demo_11",
+          "nearest_init_state_index": 32,
+          "nearest_normalized_distance": 0.252904863497154
+        },
+        {
+          "demo": "demo_1",
+          "nearest_init_state_index": 25,
+          "nearest_normalized_distance": 0.21870474309690938
+        },
+        {
+          "demo": "demo_16",
+          "nearest_init_state_index": 26,
+          "nearest_normalized_distance": 0.16900141211288577
+        }
+      ],
+      "source": "/scratch/users/ntu/veer001/meridian_labs/datasets/libero-official/libero_90/KITCHEN_SCENE7_put_the_white_bowl_to_the_right_of_the_plate_demo.hdf5",
+      "source_sha256": "4b5152e0d26fc7de67f6cff029ada46805892f57fb2d6d1b298bd35603bf8ffd",
+      "suite": "libero_90",
+      "target_qpos_address": 9,
+      "task": "put the white bowl to the right of the plate",
+      "task_id": 37
+    }
+  ]
+}

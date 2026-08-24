@@ -1,0 +1,55 @@
+schema: meridian-task-role-intervention-v1
+status: locked_before_training_outcomes
+locked_at_utc: "2026-08-24T12:29:47Z"
+supersedes: post-confirmation data, evaluation, and stopping sections in task_role_boundary_v1.yaml
+confirmation:
+  trials: 16
+  successes: 0
+  wrong_object_signatures: 16
+  automated_gate: pass
+  human_video_review: pass
+policy:
+  checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+  config: meridian_pi05_libero
+tasks:
+  - {suite: libero_90, task_id: 18, task: frying_pan_to_stove}
+  - {suite: libero_90, task_id: 37, task: white_bowl_right_of_plate}
+data:
+  doses: [4, 8]
+  selection_seed: 91501
+  targeted: geometry_maximin_from_same_task_training_partition
+  random: seeded_random_from_same_task_training_partition_excluding_targeted_episodes
+  original_distribution: suite_balanced_spatial_object_goal_libero10
+  equal_episodes: true
+  nested_doses: true
+training:
+  start_checkpoint_matched: true
+  steps: 100
+  batch_size: 2
+  warmup_steps: 10
+  peak_learning_rate: 0.00005
+  schedule_matched: true
+evaluation:
+  seed: 81401
+  replan_steps: 5
+  wait_steps: 10
+  max_steps: 400
+  target_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+  target_repeats_per_state: 2
+  target_trials_per_task: 20
+  target_trials: 40
+  regression_tasks:
+    - {suite: libero_spatial, task_id: 2}
+    - {suite: libero_object, task_id: 5}
+    - {suite: libero_goal, task_id: 8}
+    - {suite: libero_10, task_id: 5}
+  regression_states: [40, 42, 44, 46, 48]
+  regression_trials: 20
+  regression_limit_absolute: 0.02
+stopping:
+  dose_4_stage_1: targeted_must_strictly_beat_same_task_random_within_regression_limit
+  dose_4_stage_2: release_original_only_after_stage_1_passes
+  dose_8: run_only_after_targeted_beats_both_dose_4_controls
+  marginal_gain_required: 2
+  marginal_gain_denominator: 40
+  oracle: run_only_if_a_remaining_scientific_question_requires_it

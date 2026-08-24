@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 import yaml
 
-from meridian.demo_selection import select_partitioned_maximin
+from meridian.demo_selection import select_partitioned_maximin, select_partitioned_random
 from meridian.rollout_integrity import file_sha256
 
 
@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--sources", type=Path, required=True)
     parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--random-seed", type=int, required=True)
     args = parser.parse_args()
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
         raise FileExistsError(f"refusing to reuse non-empty output directory: {args.output_dir}")
@@ -88,10 +89,20 @@ def main() -> None:
             forbidden_indices=forbidden,
             count=maximum_per_task,
         )
+        random_selection = select_partitioned_random(
+            demo_features,
+            task_inventory,
+            allowed_indices=allowed,
+            forbidden_indices=forbidden,
+            excluded_demos=[item["demo"] for item in selection],
+            count=maximum_per_task,
+            seed=args.random_seed + int(source_spec["task_id"]),
+        )
         selected_tasks.append(
             {
                 **{key: source_spec[key] for key in source_spec},
                 "selected": selection,
+                "random_selected": random_selection,
             }
         )
     selected_tasks.sort(key=lambda item: (item["suite"], int(item["task_id"])))
@@ -104,6 +115,8 @@ def main() -> None:
         "inventory": str(args.inventory),
         "inventory_sha256": file_sha256(args.inventory),
         "nested_doses": True,
+        "random_seed": args.random_seed,
+        "random_control": "same tasks and partition-safe pool; seeded rank without geometry score",
         "tasks": selected_tasks,
     }
     (args.output_dir / "targeted-selection.json").write_text(
@@ -134,6 +147,31 @@ def main() -> None:
         }
         (args.output_dir / f"targeted-dose-{dose}.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True)
+        )
+        random_episodes = [
+            {
+                "source": task["source"],
+                "source_sha256": task["source_sha256"],
+                "demo": selected["demo"],
+                "task": task["task"],
+                "suite": task["suite"],
+                "task_id": task["task_id"],
+                "nearest_init_state_index": selected["nearest_init_state_index"],
+                "nearest_normalized_distance": selected["nearest_normalized_distance"],
+            }
+            for task in selected_tasks
+            for selected in task["random_selected"][:per_task]
+        ]
+        random_manifest = {
+            "schema": "meridian-libero-hdf5-episode-manifest-v1",
+            "arm": "random",
+            "dose": dose,
+            "balanced_tasks": True,
+            "selection": "seeded random rank within the same partition-safe task pools",
+            "episodes": random_episodes,
+        }
+        (args.output_dir / f"random-dose-{dose}.json").write_text(
+            json.dumps(random_manifest, indent=2, sort_keys=True)
         )
     print(json.dumps({"doses": doses, "output": str(args.output_dir)}, sort_keys=True))
 
