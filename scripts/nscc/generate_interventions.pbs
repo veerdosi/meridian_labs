@@ -40,7 +40,8 @@ fi
 export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
 export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
 
-IFS=',' read -r -a ARM_NAMES <<< "$ARMS"
+ARM_LIST=${ARMS//:/,}
+IFS=',' read -r -a ARM_NAMES <<< "$ARM_LIST"
 for arm in "${ARM_NAMES[@]}"; do
   plan="$PLANS_DIR/$arm.jsonl"
   test -s "$plan"
