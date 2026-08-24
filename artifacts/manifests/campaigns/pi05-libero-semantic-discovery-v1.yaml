@@ -85,7 +85,10 @@ validation_execution:
   plan: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
   plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
   rollouts: 120
-  state: locked_pre_submission
+  state: submitted
+  job_id: 15242910.pbs101
+  requested_walltime: 02:00:00
+  requested_ngpus: 1
 accounting:
   campaign_su_to_date: 23.9111111111
   cumulative_measured_su: 279.304165552
