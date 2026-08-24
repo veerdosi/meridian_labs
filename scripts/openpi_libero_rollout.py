@@ -25,6 +25,7 @@ from meridian.rollout_integrity import (
     free_joint_positions,
     goal_argument_positions,
     goal_metadata,
+    initial_physical_features,
     pad_contact_pairs,
     reserve_results_path,
     simulator_metadata,
@@ -81,6 +82,7 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
         obs = env.regenerate_obs_from_state(env.get_sim_state())
         initial_state_hash = simulator_state_sha256(env.sim.data.qpos, env.sim.data.qvel)
         initial_objects = free_joint_positions(env.sim)
+        physical_features = initial_physical_features(env.sim)
         initial_qpos = np.array(env.sim.data.qpos, copy=True)
         initial_qvel = np.array(env.sim.data.qvel, copy=True)
         sim_schema = simulator_metadata(env.sim)
@@ -197,6 +199,7 @@ def run_plan(client: WebsocketClientPolicy, suite, plan: dict, output: Path) -> 
             "plan_sha256": canonical_sha256(plan),
             "initial_sim_state_sha256": initial_state_hash,
             "initial_free_joint_positions": initial_objects,
+            "initial_physical_features": physical_features,
             "initial_sim_qpos": [float(value) for value in initial_qpos],
             "simulator_schema": sim_schema,
             "video": videos.get("diagnostic"),

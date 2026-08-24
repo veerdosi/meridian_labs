@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ from meridian.rollout_integrity import (
     pad_contact_pairs,
     reserve_results_path,
     validate_plans,
+    verify_physical_rollout,
 )
 
 
@@ -50,3 +52,46 @@ def test_results_path_reservation_is_exclusive(tmp_path: Path) -> None:
     reserve_results_path(path)
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
         reserve_results_path(path)
+
+
+def test_physical_preflight_requires_aligned_predicates_features_and_videos(
+    tmp_path: Path,
+) -> None:
+    frames = np.arange(2 * 4 * 4 * 3, dtype=np.uint8).reshape(2, 4, 4, 3)
+    trace = tmp_path / "trajectory.npz"
+    np.savez_compressed(
+        trace,
+        image=frames,
+        clean_observer_image=frames,
+        policy_image=frames,
+        wrist_image=frames,
+        state=np.zeros((2, 8)),
+        actions=np.zeros((2, 7)),
+        sim_qpos=np.zeros((2, 3)),
+        sim_qvel=np.zeros((2, 3)),
+        contact_count=np.zeros(2),
+        contact_geom_ids=np.full((2, 1, 2), -1),
+        goal_predicate_satisfied_before=np.zeros((2, 1), dtype=bool),
+        goal_predicate_satisfied_after=np.zeros((2, 1), dtype=bool),
+        goal_argument_positions_after=np.zeros((2, 2, 3)),
+    )
+    videos = {}
+    for name in ("clean_observer", "policy_input", "wrist", "diagnostic"):
+        path = tmp_path / f"{name}.mp4"
+        path.write_bytes(b"video")
+        videos[name] = str(path)
+    record = {
+        "id": "physical-telemetry-preflight",
+        "trace": str(trace),
+        "trace_sha256": hashlib.sha256(trace.read_bytes()).hexdigest(),
+        "simulator_schema": {
+            "nq": 3,
+            "goal_predicates": [["In", "object", "basket"]],
+            "goal_arguments": ["basket", "object"],
+        },
+        "initial_sim_qpos": [0, 0, 0],
+        "initial_physical_features": {"object:cube:x": 0.0},
+        "videos": videos,
+        "steps": 2,
+    }
+    assert verify_physical_rollout(record)["verified"] is True

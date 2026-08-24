@@ -23,7 +23,8 @@ def main() -> None:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--boundary-rollouts", type=Path, action="append", required=True)
-    parser.add_argument("--successful-pool", type=Path, action="append", required=True)
+    parser.add_argument("--screening-rollouts", type=Path, action="append", required=True)
+    parser.add_argument("--source-rollouts", type=Path, action="append", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     config = yaml.safe_load(args.config.read_text())
@@ -32,7 +33,7 @@ def main() -> None:
     boundary_records = load_jsonl(args.boundary_rollouts)
     boundary_id = selection["selected"]["boundary_rollout_id"]
     boundary = next(record for record in boundary_records if record["id"] == boundary_id)
-    pool = load_jsonl(args.successful_pool)
+    pool = load_jsonl(args.screening_rollouts) + load_jsonl(args.source_rollouts)
     manifest = select_data_arms(selection, boundary, pool, config)
     by_id = {record["id"]: record for record in pool}
     args.output.mkdir(parents=True, exist_ok=True)

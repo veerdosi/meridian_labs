@@ -12,6 +12,7 @@ set -euo pipefail
 : "${ARM:?targeted, random, original_distribution, or oracle_targeted}"
 : "${RUN_ID:?unique intervention campaign id}"
 : "${EVAL_PLANS:?absolute cluster path to target and regression plans}"
+: "${EXPECTED_EPISODES:?locked intervention dose}"
 
 ROOT=/scratch/users/ntu/veer001/meridian_labs
 OPENPI_ROOT="$ROOT/src/openpi"
@@ -52,7 +53,8 @@ phase_start=$(date +%s)
 "$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_meridian_to_lerobot.py" \
   --rollouts "$DATASET_JSONL" \
   --repo-id "$DATASET_REPO" \
-  --output-root "$HF_LEROBOT_HOME" | tee "$RUN_ROOT/conversion.json"
+  --output-root "$HF_LEROBOT_HOME" \
+  --expected-episodes "$EXPECTED_EPISODES" | tee "$RUN_ROOT/conversion.json"
 conversion_end=$(date +%s)
 
 cd "$OPENPI_ROOT"
@@ -106,7 +108,7 @@ printf '{"conversion_seconds":%d,"training_seconds":%d,"server_start_seconds":%d
   "$((training_end-conversion_end))" \
   "$((server_ready-training_end))" \
   "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
-printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
-  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
+printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\nexpected_episodes=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
+  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$EXPECTED_EPISODES" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
   > "$RUN_ROOT/inputs.txt"
-find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"

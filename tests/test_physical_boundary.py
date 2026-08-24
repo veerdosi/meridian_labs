@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from meridian.physical_boundary import (
+    build_physical_capability_map,
     finalize_selection,
     make_confirmation_plans,
     make_evaluation_plans,
@@ -16,11 +17,16 @@ from meridian.physical_boundary import (
 def config() -> dict:
     return {
         "task_set": [{"suite": "libero_object", "task_id": 0}],
-        "partitions": {"screening_init_states": [0, 1, 2, 3, 4, 5]},
+        "partitions": {
+            "screening_init_states": [0, 1, 2, 3, 4, 5],
+            "confirmation_init_states": [10, 11, 12, 13],
+            "untouched_holdout_init_states": [40, 41, 42, 43],
+        },
         "screening": {"seed": 10, "replan_steps": 5, "wait_steps": 10, "top_candidates_to_confirm": 1},
         "confirmation": {"canonical_repeats": 3, "control_replan_steps": [1, 10], "seed": 20},
-        "thresholds": {"min_screen_successes": 3, "min_screen_failures": 1, "min_geometry_specificity": 0.5, "max_expected_random_target_coverage": 0.35},
+        "thresholds": {"min_screen_successes": 3, "min_screen_failures": 1, "min_geometry_specificity": 0.5, "max_expected_random_target_coverage": 0.35, "min_generalization_contrast": 0.5},
         "weights": {"canonical_competence": 0.2, "repeatability": 0.2, "control_persistence": 0.2, "intervention_headroom": 0.15, "physical_specificity": 0.15, "random_rarity": 0.1},
+        "evaluation": {"target_holdout_states": 4},
     }
 
 
@@ -33,6 +39,28 @@ def screening_records() -> tuple[list[dict], dict]:
         records.append({"id": identifier, "task_suite": "libero_object", "task_id": 0, "init_state_index": index, "success": success, "initial_free_joint_positions": {"object": [position, 0.0, 0.0]}})
         diagnoses[identifier] = {"diagnosis": {"stage": "complete" if success else "approach"}}
     return records, diagnoses
+
+
+def confirmation_inventory() -> list[dict]:
+    return [
+        {
+            "task_suite": "libero_object",
+            "task_id": 0,
+            "init_state_index": index,
+            "initial_free_joint_positions": {"object": [position, 0.0, 0.0]},
+            "goal_already_satisfied": False,
+        }
+        for index, position in (
+            (10, 0.1),
+            (11, 0.2),
+            (12, 2.0),
+            (13, 2.2),
+            (40, 2.0),
+            (41, 2.1),
+            (42, 2.2),
+            (43, 2.3),
+        )
+    ]
 
 
 def test_plan_is_balanced_and_deterministic() -> None:
@@ -48,17 +76,26 @@ def test_screening_requires_competence_and_physical_specificity() -> None:
     assert summaries[0]["eligible_for_confirmation"] is True
     assert summaries[0]["boundary_init_state_index"] in {4, 5}
     assert summaries[0]["dominant_failure_stage"] == "approach"
+    assert summaries[0]["coverage_rule"]["feature"] == "object:object:x"
+    capability_map = build_physical_capability_map(summaries, records)
+    assert capability_map["rollout_count"] == 6
+    assert len(capability_map["global_wilson_95"]) == 2
+    assert capability_map["task_regions"][0]["failure_rollout_ids"] == ["r4", "r5"]
 
 
 def test_confirmation_persistence_selects_but_never_authorizes_training() -> None:
     records, diagnoses = screening_records()
     summaries = summarize_screening(records, diagnoses, config())
-    plans = make_confirmation_plans(summaries, config())
+    plans = make_confirmation_plans(summaries, confirmation_inventory(), config())
     confirmation = [
-        {**plan, "success": False, "parameters": {"phase": plan["phase"]}}
+        {
+            **plan,
+            "success": plan["phase"] == "boundary_predicted_success",
+            "parameters": {"phase": plan["phase"]},
+        }
         for plan in plans
     ]
-    result = finalize_selection(summaries, confirmation, config())
+    result = finalize_selection(summaries, confirmation, confirmation_inventory(), config())
     assert result["decision"] == "selected"
     assert result["training_authorized"] is False
 
@@ -66,12 +103,35 @@ def test_confirmation_persistence_selects_but_never_authorizes_training() -> Non
 def test_control_fix_rejects_data_boundary() -> None:
     records, diagnoses = screening_records()
     summaries = summarize_screening(records, diagnoses, config())
-    plans = make_confirmation_plans(summaries, config())
+    plans = make_confirmation_plans(summaries, confirmation_inventory(), config())
     confirmation = [
-        {**plan, "success": plan["phase"] == "control_probe", "parameters": {"phase": plan["phase"]}}
+        {
+            **plan,
+            "success": plan["phase"] in {"control_probe", "boundary_predicted_success"},
+            "parameters": {"phase": plan["phase"]},
+        }
         for plan in plans
     ]
-    assert finalize_selection(summaries, confirmation, config())["decision"] == "no_valid_boundary"
+    assert finalize_selection(
+        summaries, confirmation, confirmation_inventory(), config()
+    )["decision"] == "no_valid_boundary"
+
+
+def test_unreplicated_feature_boundary_is_rejected() -> None:
+    records, diagnoses = screening_records()
+    summaries = summarize_screening(records, diagnoses, config())
+    plans = make_confirmation_plans(summaries, confirmation_inventory(), config())
+    confirmation = [
+        {
+            **plan,
+            "success": False,
+            "parameters": {"phase": plan["phase"]},
+        }
+        for plan in plans
+    ]
+    assert finalize_selection(
+        summaries, confirmation, confirmation_inventory(), config()
+    )["decision"] == "no_valid_boundary"
 
 
 def test_evaluation_selects_holdouts_from_geometry_without_outcomes() -> None:
@@ -83,6 +143,12 @@ def test_evaluation_selects_holdouts_from_geometry_without_outcomes() -> None:
             "task_suite": "libero_object",
             "task_id": 0,
             "boundary_rollout_id": "r4",
+            "coverage_rule": {
+                "feature": "object:object:x",
+                "threshold": 1.15,
+                "failure_side": "high",
+                "boundary_failure_value": 2.0,
+            },
         }
     }
     inventory = [

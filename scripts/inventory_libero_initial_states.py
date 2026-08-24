@@ -9,13 +9,14 @@ from pathlib import Path
 
 import yaml
 from libero.libero import benchmark, get_libero_path
-from libero.libero.envs import OffScreenRenderEnv
+from libero.libero.envs.env_wrapper import ControlEnv
 
 from meridian.physical_boundary import validate_protocol_config
 from meridian.rollout_integrity import (
     evaluate_goal_predicates,
     free_joint_positions,
     goal_metadata,
+    initial_physical_features,
     reserve_results_path,
     simulator_state_sha256,
 )
@@ -35,7 +36,12 @@ def main() -> None:
             suite = suites[task_spec["suite"]]
             task = suite.get_task(int(task_spec["task_id"]))
             bddl = Path(get_libero_path("bddl_files")) / task.problem_folder / task.bddl_file
-            env = OffScreenRenderEnv(bddl_file_name=bddl, camera_heights=256, camera_widths=256)
+            env = ControlEnv(
+                bddl_file_name=bddl,
+                use_camera_obs=False,
+                has_renderer=False,
+                has_offscreen_renderer=False,
+            )
             try:
                 env.reset()
                 states = suite.get_task_init_states(int(task_spec["task_id"]))
@@ -49,6 +55,7 @@ def main() -> None:
                         "init_state_index": index,
                         "initial_sim_state_sha256": simulator_state_sha256(env.sim.data.qpos, env.sim.data.qvel),
                         "initial_free_joint_positions": free_joint_positions(env.sim),
+                        "initial_physical_features": initial_physical_features(env.sim),
                         "initial_sim_qpos": [float(value) for value in env.sim.data.qpos],
                         "goal_predicates": goals["predicates"],
                         "goal_already_satisfied": bool(initial_predicates.all()),

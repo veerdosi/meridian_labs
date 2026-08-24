@@ -8,6 +8,8 @@ from typing import Any
 
 import numpy as np
 
+from meridian.search import _wilson
+
 SUITE_ORDER = {name: index for index, name in enumerate(
     ("libero_spatial", "libero_object", "libero_goal", "libero_10", "libero_90")
 )}
@@ -71,59 +73,73 @@ def make_screening_plans(config: Mapping[str, Any]) -> list[dict]:
     return plans
 
 
-def _feature_names(records: Sequence[Mapping[str, Any]]) -> list[str]:
-    names = {name for record in records for name in record["initial_free_joint_positions"]}
-    if not names:
-        raise ValueError("rollouts contain no initial free-joint positions")
-    if any(set(record["initial_free_joint_positions"]) != names for record in records):
-        raise ValueError("physical object schema differs within one task")
-    return sorted(names)
+def _physical_feature_mapping(record: Mapping[str, Any]) -> dict[str, float]:
+    if "initial_physical_features" in record:
+        return {str(name): float(value) for name, value in record["initial_physical_features"].items()}
+    mapping = {}
+    for name, position in record["initial_free_joint_positions"].items():
+        for axis, value in zip(("x", "y", "z"), position):
+            mapping[f"object:{name}:{axis}"] = float(value)
+    return mapping
 
 
-def _features(records: Sequence[Mapping[str, Any]]) -> np.ndarray:
-    if all("initial_sim_qpos" in record for record in records):
-        values = np.asarray([record["initial_sim_qpos"] for record in records], dtype=float)
-        if len({len(value) for value in values}) != 1:
-            raise ValueError("initial qpos dimensions differ within one task")
-        scale = np.std(values, axis=0)
-        scale[scale < 1e-9] = 1.0
-        return (values - np.mean(values, axis=0)) / scale
-    names = _feature_names(records)
-    values = np.asarray(
-        [
-            [coordinate for name in names for coordinate in record["initial_free_joint_positions"][name]]
-            for record in records
-        ],
-        dtype=float,
-    )
-    scale = np.std(values, axis=0)
-    scale[scale < 1e-9] = 1.0
-    return (values - np.mean(values, axis=0)) / scale
+def _feature_table(records: Sequence[Mapping[str, Any]]) -> tuple[list[str], np.ndarray]:
+    mappings = [_physical_feature_mapping(record) for record in records]
+    names = set(mappings[0]) if mappings else set()
+    if not names or any(set(mapping) != names for mapping in mappings):
+        raise ValueError("interpretable physical feature schema differs within one task")
+    ordered = sorted(names)
+    return ordered, np.asarray([[mapping[name] for name in ordered] for mapping in mappings])
 
 
 def _geometry_summary(records: Sequence[Mapping[str, Any]]) -> dict:
-    features = _features(records)
+    names, features = _feature_table(records)
     outcomes = np.asarray([bool(record["success"]) for record in records])
     if outcomes.all() or (~outcomes).all():
-        return {"specificity": 0.0, "boundary_failure_index": None, "random_coverage": 1.0}
-    nearest_correct = 0
-    for index in range(len(records)):
-        distances = np.linalg.norm(features - features[index], axis=1)
-        distances[index] = np.inf
-        nearest_correct += bool(outcomes[int(np.argmin(distances))] == outcomes[index])
-    success_indices, failure_indices = np.flatnonzero(outcomes), np.flatnonzero(~outcomes)
-    pairs = [
-        (float(np.linalg.norm(features[failure] - features[success])), failure, success)
-        for failure in failure_indices
-        for success in success_indices
-    ]
-    radius, boundary_failure, _ = min(pairs, key=lambda item: (item[0], item[1], item[2]))
-    distances = np.linalg.norm(features - features[boundary_failure], axis=1)
-    random_coverage = float(np.mean(distances < max(radius, 1e-9)))
+        return {
+            "specificity": 0.0,
+            "boundary_failure_index": None,
+            "random_coverage": 1.0,
+            "coverage_rule": None,
+        }
+    actual_failure = ~outcomes
+    candidates = []
+    for feature_index, name in enumerate(names):
+        values = features[:, feature_index]
+        unique = np.unique(values)
+        for threshold in (unique[:-1] + unique[1:]) / 2:
+            for side_order, side in enumerate(("low", "high")):
+                predicted_failure = values <= threshold if side == "low" else values >= threshold
+                accuracy = float(np.mean(predicted_failure == actual_failure))
+                candidates.append((-accuracy, name, float(threshold), side_order, predicted_failure))
+    if not candidates:
+        return {
+            "specificity": 0.0,
+            "boundary_failure_index": None,
+            "random_coverage": 1.0,
+            "coverage_rule": None,
+        }
+    negative_accuracy, feature, threshold, side_order, predicted_failure = min(
+        candidates, key=lambda item: item[:4]
+    )
+    side = ("low", "high")[side_order]
+    feature_index = names.index(feature)
+    values = features[:, feature_index]
+    failure_indices = np.flatnonzero(actual_failure)
+    boundary_failure = min(
+        failure_indices,
+        key=lambda index: (abs(float(values[index]) - threshold), int(index)),
+    )
     return {
-        "specificity": nearest_correct / len(records),
+        "specificity": -negative_accuracy,
         "boundary_failure_index": int(boundary_failure),
-        "random_coverage": random_coverage,
+        "random_coverage": float(np.mean(predicted_failure)),
+        "coverage_rule": {
+            "feature": feature,
+            "threshold": threshold,
+            "failure_side": side,
+            "boundary_failure_value": float(values[boundary_failure]),
+        },
     }
 
 
@@ -186,15 +202,19 @@ def summarize_screening(
                 "task_id": task_id,
                 "screen_successes": successes,
                 "screen_trials": len(members),
+                "screen_wilson_95": _wilson(successes, len(members)),
                 "canonical_competence": competence,
                 "intervention_headroom": headroom,
                 "geometry_specificity": geometry["specificity"],
                 "stage_consistency": stage_consistency,
                 "physical_specificity": physical_specificity,
                 "expected_random_target_coverage": geometry["random_coverage"],
+                "coverage_rule": geometry["coverage_rule"],
                 "dominant_failure_stage": Counter(failed_stages).most_common(1)[0][0] if failed_stages else None,
                 "boundary_init_state_index": int(boundary_record["init_state_index"]) if boundary_record else None,
                 "boundary_rollout_id": boundary_record["id"] if boundary_record else None,
+                "evidence_rollout_ids": [record["id"] for record in members],
+                "failure_rollout_ids": [record["id"] for record in members if not record["success"]],
                 "partial_score": partial_score,
                 "eligible_for_confirmation": eligible,
             }
@@ -212,7 +232,34 @@ def summarize_screening(
     )
 
 
-def make_confirmation_plans(summaries: Sequence[Mapping[str, Any]], config: Mapping[str, Any]) -> list[dict]:
+def build_physical_capability_map(
+    summaries: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]]
+) -> dict:
+    successes = sum(bool(record["success"]) for record in records)
+    return {
+        "schema": "meridian-physical-capability-map-v1",
+        "rollout_count": len(records),
+        "successes": successes,
+        "global_success_rate": successes / len(records),
+        "global_wilson_95": _wilson(successes, len(records)),
+        "task_regions": list(summaries),
+        "eligible_boundary_count": sum(
+            bool(item["eligible_for_confirmation"]) for item in summaries
+        ),
+        "evidence_rollout_ids": [record["id"] for record in records],
+    }
+
+
+def _predicted_failure(record: Mapping[str, Any], rule: Mapping[str, Any]) -> bool:
+    value = _physical_feature_mapping(record)[str(rule["feature"])]
+    return value <= float(rule["threshold"]) if rule["failure_side"] == "low" else value >= float(rule["threshold"])
+
+
+def make_confirmation_plans(
+    summaries: Sequence[Mapping[str, Any]],
+    inventory: Sequence[Mapping[str, Any]],
+    config: Mapping[str, Any],
+) -> list[dict]:
     count = int(config["screening"]["top_candidates_to_confirm"])
     candidates = [item for item in summaries if item["eligible_for_confirmation"]][:count]
     settings = config["confirmation"]
@@ -243,6 +290,39 @@ def make_confirmation_plans(summaries: Sequence[Mapping[str, Any]], config: Mapp
                     "seed": int(settings["seed"]) + candidate_index * 100 + 50 + probe_index,
                     "replan_steps": int(replan_steps),
                     "phase": "control_probe",
+                }
+            )
+        confirmation_states = set(config["partitions"]["confirmation_init_states"])
+        inventory_records = sorted(
+            (
+                record
+                for record in inventory
+                if record["task_suite"] == candidate["task_suite"]
+                and int(record["task_id"]) == int(candidate["task_id"])
+                and int(record["init_state_index"]) in confirmation_states
+            ),
+            key=lambda record: int(record["init_state_index"]),
+        )
+        if len(inventory_records) != len(confirmation_states):
+            raise ValueError("state inventory is missing candidate confirmation states")
+        if any(record.get("goal_already_satisfied") for record in inventory_records):
+            raise ValueError("a confirmation initial state already satisfies the task goal")
+        for state_offset, state in enumerate(inventory_records):
+            predicted_failure = _predicted_failure(state, candidate["coverage_rule"])
+            plans.append(
+                {
+                    "id": f"confirm-{candidate_index}-generalize-i{state['init_state_index']}",
+                    "task_suite": candidate["task_suite"],
+                    "task_id": int(candidate["task_id"]),
+                    "seed": int(settings["seed"]) + candidate_index * 100 + 70 + state_offset,
+                    "init_state_index": int(state["init_state_index"]),
+                    "wait_steps": int(config["screening"]["wait_steps"]),
+                    "replan_steps": int(config["screening"]["replan_steps"]),
+                    "phase": (
+                        "boundary_predicted_failure"
+                        if predicted_failure
+                        else "boundary_predicted_success"
+                    ),
                 }
             )
     return plans
@@ -287,21 +367,9 @@ def make_evaluation_plans(
     boundary = next(
         record for record in task_screen if record["id"] == selected["boundary_rollout_id"]
     )
-    use_qpos = all("initial_sim_qpos" in record for record in task_screen)
-    names = [] if use_qpos else _feature_names(task_screen)
-
-    def vector(record: Mapping[str, Any]) -> np.ndarray:
-        if use_qpos:
-            return np.asarray(record["initial_sim_qpos"], dtype=float)
-        return np.asarray(
-            [coordinate for name in names for coordinate in record["initial_free_joint_positions"][name]],
-            dtype=float,
-        )
-
-    screen_values = np.asarray([vector(record) for record in task_screen])
-    scale = np.std(screen_values, axis=0)
-    scale[scale < 1e-9] = 1.0
-    boundary_vector = vector(boundary)
+    rule = selected["coverage_rule"]
+    feature = str(rule["feature"])
+    boundary_value = _physical_feature_mapping(boundary)[feature]
     holdout_set = set(config["partitions"]["untouched_holdout_init_states"])
     holdouts = [
         record for record in inventory
@@ -310,14 +378,21 @@ def make_evaluation_plans(
     ]
     if len(holdouts) != len(holdout_set):
         raise ValueError("state inventory is missing selected-task untouched holdouts")
-    holdouts.sort(
+    target_holdouts = [record for record in holdouts if _predicted_failure(record, rule)]
+    target_count = int(config["evaluation"]["target_holdout_states"])
+    if len(target_holdouts) < target_count:
+        raise ValueError(
+            f"only {len(target_holdouts)} untouched states match the locked failure side; "
+            f"{target_count} required"
+        )
+    target_holdouts.sort(
         key=lambda record: (
-            float(np.linalg.norm((vector(record) - boundary_vector) / scale)),
+            abs(_physical_feature_mapping(record)[feature] - boundary_value),
             int(record["init_state_index"]),
         )
     )
     evaluation = config["evaluation"]
-    selected_holdouts = holdouts[: int(evaluation["target_holdout_states"])]
+    selected_holdouts = target_holdouts[:target_count]
     plans = []
     for state_offset, state in enumerate(selected_holdouts):
         for repeat in range(int(evaluation["target_repeats_per_holdout"])):
@@ -357,7 +432,10 @@ def make_evaluation_plans(
 
 
 def finalize_selection(
-    summaries: Sequence[Mapping[str, Any]], confirmation_records: Sequence[Mapping[str, Any]], config: Mapping[str, Any]
+    summaries: Sequence[Mapping[str, Any]],
+    confirmation_records: Sequence[Mapping[str, Any]],
+    inventory: Sequence[Mapping[str, Any]],
+    config: Mapping[str, Any],
 ) -> dict:
     by_task: dict[tuple[str, int], list[Mapping[str, Any]]] = defaultdict(list)
     for record in confirmation_records:
@@ -370,22 +448,83 @@ def finalize_selection(
         records = by_task.get((summary["task_suite"], int(summary["task_id"])), [])
         repeats = [record for record in records if record["parameters"].get("phase") == "repeatability"]
         controls = [record for record in records if record["parameters"].get("phase") == "control_probe"]
+        predicted_failures = [
+            record
+            for record in records
+            if record["parameters"].get("phase") == "boundary_predicted_failure"
+        ]
+        predicted_successes = [
+            record
+            for record in records
+            if record["parameters"].get("phase") == "boundary_predicted_success"
+        ]
         expected_repeats = int(config["confirmation"]["canonical_repeats"])
         expected_controls = len(config["confirmation"]["control_replan_steps"])
-        if len(repeats) != expected_repeats or len(controls) != expected_controls:
+        expected_generalization = len(config["partitions"]["confirmation_init_states"])
+        if (
+            len(repeats) != expected_repeats
+            or len(controls) != expected_controls
+            or len(predicted_failures) + len(predicted_successes) != expected_generalization
+        ):
             continue
         repeatability = sum(not record["success"] for record in repeats) / len(repeats)
         persistence = sum(not record["success"] for record in controls) / len(controls)
+        if predicted_failures and predicted_successes:
+            predicted_failure_success_rate = sum(
+                bool(record["success"]) for record in predicted_failures
+            ) / len(predicted_failures)
+            predicted_success_success_rate = sum(
+                bool(record["success"]) for record in predicted_successes
+            ) / len(predicted_successes)
+            generalization_contrast = (
+                predicted_success_success_rate - predicted_failure_success_rate
+            )
+        else:
+            predicted_failure_success_rate = None
+            predicted_success_success_rate = None
+            generalization_contrast = -1.0
+        validated_specificity = max(
+            0.0, (summary["physical_specificity"] + generalization_contrast) / 2
+        )
+        holdout_indices = set(config["partitions"]["untouched_holdout_init_states"])
+        matching_holdouts = [
+            record
+            for record in inventory
+            if record["task_suite"] == summary["task_suite"]
+            and int(record["task_id"]) == int(summary["task_id"])
+            and int(record["init_state_index"]) in holdout_indices
+            and _predicted_failure(record, summary["coverage_rule"])
+        ]
+        required_holdouts = int(config["evaluation"]["target_holdout_states"])
         total = (
             weights["canonical_competence"] * summary["canonical_competence"]
             + weights["repeatability"] * repeatability
             + weights["control_persistence"] * persistence
             + weights["intervention_headroom"] * summary["intervention_headroom"]
-            + weights["physical_specificity"] * summary["physical_specificity"]
+            + weights["physical_specificity"] * validated_specificity
             + weights["random_rarity"] * (1 - summary["expected_random_target_coverage"])
         )
-        passed = repeatability == 1.0 and persistence == 1.0
-        validated.append({**summary, "repeatability": repeatability, "control_persistence": persistence, "total_score": total, "passed": passed})
+        passed = (
+            repeatability == 1.0
+            and persistence == 1.0
+            and generalization_contrast
+            >= float(config["thresholds"]["min_generalization_contrast"])
+            and len(matching_holdouts) >= required_holdouts
+        )
+        validated.append(
+            {
+                **summary,
+                "repeatability": repeatability,
+                "control_persistence": persistence,
+                "predicted_failure_success_rate": predicted_failure_success_rate,
+                "predicted_success_success_rate": predicted_success_success_rate,
+                "generalization_contrast": generalization_contrast,
+                "validated_physical_specificity": validated_specificity,
+                "matching_untouched_holdouts": len(matching_holdouts),
+                "total_score": total,
+                "passed": passed,
+            }
+        )
     validated.sort(key=lambda item: (-item["total_score"], -item["repeatability"], -item["physical_specificity"], SUITE_ORDER[item["task_suite"]], item["task_id"], item["boundary_init_state_index"]))
     selected = next((item for item in validated if item["passed"]), None)
     return {

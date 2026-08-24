@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from meridian.physical_boundary import (
+    build_physical_capability_map,
     finalize_selection,
     make_confirmation_plans,
     make_evaluation_plans,
@@ -30,17 +31,23 @@ def main() -> None:
     parser.add_argument("--screening", type=Path, action="append", required=True)
     parser.add_argument("--diagnoses", type=Path, required=True)
     parser.add_argument("--confirmation", type=Path, action="append")
-    parser.add_argument("--inventory", type=Path)
+    parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     config = yaml.safe_load(args.config.read_text())
     validate_protocol_config(config)
     diagnoses = {item["id"]: item for item in json.loads(args.diagnoses.read_text())["records"]}
-    summaries = summarize_screening(load_jsonl(args.screening), diagnoses, config)
+    screening_records = load_jsonl(args.screening)
+    summaries = summarize_screening(screening_records, diagnoses, config)
     args.output.mkdir(parents=True, exist_ok=True)
-    (args.output / "screening-summary.json").write_text(json.dumps(summaries, indent=2, sort_keys=True))
+    capability_map = build_physical_capability_map(summaries, screening_records)
+    (args.output / "capability-map.json").write_text(
+        json.dumps(capability_map, indent=2, sort_keys=True)
+    )
     if not args.confirmation:
-        plans = validate_plans(make_confirmation_plans(summaries, config))
+        plans = validate_plans(
+            make_confirmation_plans(summaries, load_jsonl([args.inventory]), config)
+        )
         path = args.output / "confirmation.jsonl"
         reserve_results_path(path)
         with path.open("a") as stream:
@@ -48,13 +55,16 @@ def main() -> None:
                 stream.write(json.dumps(plan, sort_keys=True) + "\n")
         result = {"phase": "confirmation_required", "plans": len(plans), "training_authorized": False}
     else:
-        result = finalize_selection(summaries, load_jsonl(args.confirmation), config)
+        result = finalize_selection(
+            summaries,
+            load_jsonl(args.confirmation),
+            load_jsonl([args.inventory]),
+            config,
+        )
         if result["selected"]:
-            if args.inventory is None:
-                raise ValueError("--inventory is required after a boundary is selected")
             source_plans = validate_plans(make_source_pool_plans(result, config))
             evaluation_plans = validate_plans(
-                make_evaluation_plans(result, load_jsonl([args.inventory]), load_jsonl(args.screening), config)
+                make_evaluation_plans(result, load_jsonl([args.inventory]), screening_records, config)
             )
             for name, plans in (("source-pool.jsonl", source_plans), ("evaluation.jsonl", evaluation_plans)):
                 path = args.output / name

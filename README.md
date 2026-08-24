@@ -34,7 +34,8 @@ The active protocol is [`configs/physical_boundary_v1.yaml`](configs/physical_bo
 It screens balanced natural LIBERO initial states, records exact BDDL subgoal progress plus physical
 telemetry, rejects failures fixed by canonical replanning controls, and permits only unique successful
 neighbor trajectories for nested 4/8-dose targeted comparisons. Every selector emits
-`training_authorized=false`; the final campaign requires an explicit scientific review before launch.
+`training_authorized=false`; after the engineering preflight, Codex and the user review one compact
+selection summary before any training job is submitted.
 
 ## NSCC
 

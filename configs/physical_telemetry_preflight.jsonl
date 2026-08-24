@@ -1,0 +1,1 @@
+{"id":"physical-telemetry-preflight","init_state_index":17,"max_steps":25,"phase":"engineering_preflight","replan_steps":5,"seed":99117,"task_id":9,"task_suite":"libero_goal","wait_steps":10}

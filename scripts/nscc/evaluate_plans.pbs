@@ -76,4 +76,4 @@ export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
 
 printf 'policy_config=%s\ncheckpoint=%s\nplans=%s\nreadiness_timeout=%s\negl_device_index=%s\n' \
   "$POLICY_CONFIG" "$CHECKPOINT_DIR" "$PLANS_FILE" "$READINESS_TIMEOUT" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
-find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"

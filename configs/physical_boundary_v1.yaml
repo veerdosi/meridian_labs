@@ -32,6 +32,7 @@ thresholds:
   min_screen_failures: 1
   min_geometry_specificity: 0.60
   max_expected_random_target_coverage: 0.35
+  min_generalization_contrast: 0.50
   require_all_repeat_failures: true
   require_all_control_probe_failures: true
   minimum_unique_targeted_sources: 8

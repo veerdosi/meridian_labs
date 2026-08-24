@@ -10,7 +10,8 @@ from pathlib import Path
 import numpy as np
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
-from meridian.rollout_integrity import aligned_trajectory_arrays, file_sha256
+from meridian.dataset_integrity import validate_training_records
+from meridian.rollout_integrity import aligned_trajectory_arrays
 
 
 def main() -> None:
@@ -18,11 +19,16 @@ def main() -> None:
     parser.add_argument("--rollouts", type=Path, required=True)
     parser.add_argument("--repo-id", required=True)
     parser.add_argument("--output-root", type=Path, required=True)
-    parser.add_argument("--include-failures", action="store_true")
+    parser.add_argument("--expected-episodes", type=int, required=True)
     args = parser.parse_args()
+    dataset_root = args.output_root / args.repo_id
+    if dataset_root.exists():
+        raise FileExistsError(f"refusing to reuse existing dataset root: {dataset_root}")
+    records = [json.loads(line) for line in args.rollouts.read_text().splitlines() if line.strip()]
+    selected = validate_training_records(records, expected_episodes=args.expected_episodes)
     dataset = LeRobotDataset.create(
         repo_id=args.repo_id,
-        root=args.output_root / args.repo_id,
+        root=dataset_root,
         robot_type="panda",
         fps=10,
         features={
@@ -42,17 +48,8 @@ def main() -> None:
         image_writer_threads=4,
         image_writer_processes=2,
     )
-    records = [json.loads(line) for line in args.rollouts.read_text().splitlines() if line.strip()]
-    selected = [record for record in records if record["success"] or args.include_failures]
     for record in selected:
         trace_path = Path(record["trace"])
-        observed_hash = file_sha256(trace_path)
-        expected_hash = record.get("trace_sha256")
-        if expected_hash and observed_hash != expected_hash:
-            raise ValueError(
-                f"trace hash mismatch for {record['id']}: "
-                f"expected {expected_hash}, observed {observed_hash}"
-            )
         with np.load(trace_path) as trajectory:
             images, wrists, states, actions = aligned_trajectory_arrays(
                 trajectory, ("image", "wrist_image", "state", "actions")
@@ -73,6 +70,8 @@ def main() -> None:
             {
                 "repo_id": args.repo_id,
                 "episodes": len(selected),
+                "source_ids": [record["id"] for record in selected],
+                "trace_sha256": [record["trace_sha256"] for record in selected],
                 "source_rollouts": str(args.rollouts),
             },
             sort_keys=True,

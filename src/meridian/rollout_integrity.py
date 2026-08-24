@@ -129,6 +129,25 @@ def free_joint_positions(sim: Any) -> dict[str, list[float]]:
     return positions
 
 
+def initial_physical_features(sim: Any) -> dict[str, float]:
+    """Expose interpretable initial object, articulation, and robot configuration axes."""
+    model = sim.model
+    features: dict[str, float] = {}
+    robot_tokens = ("robot", "panda", "gripper", "finger", "hand")
+    for joint_id, joint_type_value in enumerate(np.asarray(model.jnt_type)):
+        joint_type = int(joint_type_value)
+        address = int(model.jnt_qposadr[joint_id])
+        name = str(model.joint_id2name(joint_id) or f"joint_{joint_id}")
+        lowered = name.lower()
+        if joint_type == 0:
+            for offset, axis in enumerate(("x", "y", "z")):
+                features[f"object:{name}:{axis}"] = float(sim.data.qpos[address + offset])
+        elif joint_type in (2, 3):
+            category = "robot" if any(token in lowered for token in robot_tokens) else "articulation"
+            features[f"{category}:{name}"] = float(sim.data.qpos[address])
+    return features
+
+
 def goal_metadata(env: Any) -> dict[str, Any]:
     """Return LIBERO's exact BDDL goal predicates and ordered argument names."""
     goals = [list(state) for state in env.env.parsed_problem["goal_state"]]
@@ -177,3 +196,80 @@ def reserve_results_path(path: Path) -> None:
             pass
     except FileExistsError as error:
         raise FileExistsError(f"refusing to overwrite or append existing results: {path}") from error
+
+
+def verify_physical_rollout(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Verify one real natural-state rollout before any campaign is allowed to start."""
+    required_record_fields = {
+        "trace",
+        "trace_sha256",
+        "simulator_schema",
+        "initial_sim_qpos",
+        "initial_physical_features",
+        "videos",
+    }
+    if missing := required_record_fields - record.keys():
+        raise ValueError(f"rollout record missing physical fields: {sorted(missing)}")
+    trace = Path(str(record["trace"]))
+    if file_sha256(trace) != record["trace_sha256"]:
+        raise ValueError("physical rollout trace hash mismatch")
+    temporal_keys = (
+        "image",
+        "clean_observer_image",
+        "policy_image",
+        "wrist_image",
+        "state",
+        "actions",
+        "sim_qpos",
+        "sim_qvel",
+        "contact_count",
+        "contact_geom_ids",
+        "goal_predicate_satisfied_before",
+        "goal_predicate_satisfied_after",
+        "goal_argument_positions_after",
+    )
+    with np.load(trace) as trajectory:
+        arrays = aligned_trajectory_arrays(trajectory, temporal_keys)
+        by_name = dict(zip(temporal_keys, arrays))
+        if not np.array_equal(by_name["image"], by_name["policy_image"]):
+            raise ValueError("image and exact policy input differ under the canonical preflight")
+        if not np.array_equal(by_name["clean_observer_image"], by_name["policy_image"]):
+            raise ValueError("clean and policy streams differ under the canonical preflight")
+        if float(np.std(by_name["policy_image"])) < 1.0:
+            raise ValueError("policy input is visually degenerate")
+        for name in ("state", "actions", "sim_qpos", "sim_qvel", "goal_argument_positions_after"):
+            if not np.isfinite(by_name[name]).all():
+                raise ValueError(f"physical telemetry contains non-finite values in {name}")
+        schema = record["simulator_schema"]
+        predicate_count = len(schema.get("goal_predicates", []))
+        argument_count = len(schema.get("goal_arguments", []))
+        if predicate_count == 0:
+            raise ValueError("rollout exposes no BDDL goal predicates")
+        if by_name["goal_predicate_satisfied_after"].shape[1:] != (predicate_count,):
+            raise ValueError("goal predicate telemetry does not match its schema")
+        if by_name["goal_predicate_satisfied_before"].shape[1:] != (predicate_count,):
+            raise ValueError("pre-action goal predicate telemetry does not match its schema")
+        if by_name["goal_argument_positions_after"].shape[1:] != (argument_count, 3):
+            raise ValueError("goal argument telemetry does not match its schema")
+        if by_name["sim_qpos"].shape[1:] != (int(schema["nq"]),):
+            raise ValueError("qpos telemetry does not match its simulator schema")
+    if len(record["initial_sim_qpos"]) != int(record["simulator_schema"]["nq"]):
+        raise ValueError("initial qpos does not match its simulator schema")
+    if not record["initial_physical_features"]:
+        raise ValueError("rollout exposes no interpretable physical initial-state features")
+    expected_videos = {"clean_observer", "policy_input", "wrist", "diagnostic"}
+    if set(record["videos"]) != expected_videos:
+        raise ValueError("rollout does not reference exactly four evidence videos")
+    for path in record["videos"].values():
+        video = Path(str(path))
+        if not video.is_file() or video.stat().st_size == 0:
+            raise ValueError(f"missing or empty evidence video: {video}")
+    return {
+        "schema": "meridian-physical-preflight-verification-v1",
+        "id": record["id"],
+        "steps": int(record["steps"]),
+        "goal_predicates": len(record["simulator_schema"]["goal_predicates"]),
+        "physical_features": len(record["initial_physical_features"]),
+        "videos": 4,
+        "verified": True,
+    }
