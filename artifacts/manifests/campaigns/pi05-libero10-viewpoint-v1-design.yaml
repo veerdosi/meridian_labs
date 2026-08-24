@@ -1,0 +1,126 @@
+campaign_id: pi05-libero10-viewpoint-intervention-v1
+status: locked_before_new_outcomes
+locked_at_utc: 2026-08-24T05:27:26Z
+authoritative_brief: BUILD_BRIEF.md
+starting_checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+target:
+  task_suite: libero_10
+  task_id: 3
+source_boundary:
+  campaign: pi05-libero-semantic-discovery-v1
+  decision: artifacts/results/pi05-semantic-discovery-v1/validation-decision.json
+  task_suite: libero_10
+  task_id: 3
+  language: put the black bowl in the bottom drawer of the cabinet and close it
+  canonical_successes: 5
+  canonical_trials: 5
+  viewpoint_successes: 0
+  viewpoint_trials: 5
+  visual_only_successes: 5
+  visual_only_trials: 5
+  canonical_control: {replan_steps: 5.0, action_noise: 0.0}
+hypothesis:
+  kind: data_coverage
+  statement: The released checkpoint lacks coverage for positive translated/rotated agent views of this articulated sequence; a viewpoint-focused simulator dataset will improve the held-out boundary more than equal-dose broad-viewpoint random or canonical original-distribution data.
+  predicted_result: Targeted data produces at least 15 percentage points more held-out target success than both matched controls, with significant paired evidence and no more than 5 percentage points of canonical regression.
+  falsification: Reject the intervention-value claim if targeted does not beat both equal-dose controls under the locked rules; do not substitute a post-hoc arm, task, dose, or threshold.
+  competing_explanations:
+    - inference/control failure, weakened because canonical replanning and action noise were fixed in all five repeated failures
+    - generic visual corruption, rejected by five of five visual-only successes
+    - task incapability, rejected by five of five canonical successes
+selected_intervention_axes: [camera_x, camera_yaw_deg]
+canonical_parameters: {init_state_index: 0.0, camera_x: 0.0, camera_yaw_deg: 0.0, brightness: 1.0, occlusion: 0.0, visual_distractors: 0.0, replan_steps: 5.0, action_noise: 0.0}
+target_viewpoint_bounds: {camera_x: [0.08, 0.12], camera_yaw_deg: [32.0, 38.0]}
+training_source_pool:
+  count: 30
+  task_suite: libero_10
+  task_id: 3
+  seed_base: 71000
+  init_state_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+  minimum_successful_sources: 24
+  separation: Training-only seeds and initial states; no validation or confirmation outcome is eligible as a training source.
+  top_up_rule: If fewer than 24 succeed, collect only the shortfall plus two spares using new training-only seeds on indices 0-29; never use primary or confirmation traces.
+primary_evaluation:
+  seeds: [62000, 62001, 62002, 62003, 62004, 62005, 62006, 62007, 62008, 62009]
+  init_state_indices: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+  target_repeats_per_seed: 4
+  target_trials: 40
+  task_regression_repeats_per_seed: 2
+  task_regression_trials: 20
+  cross_suite_regression: [libero_spatial, libero_object, libero_goal, libero_10]
+  cross_suite_repeats: 5
+  cross_suite_seed_base: 65000
+  cross_suite_regression_trials: 20
+  total_regression_trials: 40
+  paired_across_arms: true
+confirmation_evaluation:
+  seeds: [51000, 51001, 51002, 51003, 51004, 51005, 51006, 51007, 51008, 51009]
+  provenance: Untouched seeds reserved before semantic discovery outcomes.
+  init_state_indices: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+  target_repeats_per_seed: 4
+  target_trials: 40
+  use_restriction: Do not evaluate until one dose passes the complete primary gate; evaluate only the selected targeted arm and its matched random arm.
+matched_training_contract:
+  same_starting_checkpoint: true
+  same_base_source_trace_at_each_dataset_index: true
+  same_trajectory_count_within_dose: true
+  same_training_steps_within_and_across_doses: 100
+  same_optimizer_and_training_seed: true
+  selected_axes_only: [camera_x, camera_yaw_deg]
+  targeted_sampling: 75 percent target bounds and 25 percent broad viewpoint
+  random_sampling: full uniform over the same two viewpoint axes
+  original_distribution_sampling: canonical values on the same two axes
+  quality_vetoes: [finite_actions, replay_task_success, exact_dose, source_matching, parameter_provenance, no_holdout_source]
+dose_schedule:
+  small: 8
+  medium: 24
+  medium_training_from_released_checkpoint: true
+  nested_source_schedule: The first eight matched sources in dose 24 are identical to dose 8; all arms within each dose use the same ordered sources.
+sequential_gate:
+  regression_limit: 0.05
+  minimum_target_lift_over_each_control: 0.15
+  paired_test: exact two-sided sign test on fixed rollout IDs
+  maximum_primary_p: 0.05
+  stage_1:
+    run: [released_checkpoint_baseline, dose8_targeted, dose8_random]
+    negative_if: targeted success is not strictly above both baseline and random, or regression loss exceeds 0.05
+    on_negative: cancel held original and all medium jobs; record failure honestly
+    on_positive: release dose8 original-distribution
+  stage_1_complete:
+    decisive_if: targeted lift is at least 0.15 over random and original, both paired p-values are at most 0.05, and regression loss is at most 0.05
+    promising_if: targeted strictly beats random and original within regression limit but misses an effect-size or significance threshold
+    on_decisive: select dose 8 and unlock untouched confirmation
+    on_promising: run matched dose24 targeted and random, then release original only after the same directional/regression pre-gate
+    otherwise: stop negative
+  stage_2_complete:
+    decisive_if: dose24 targeted lift is at least 0.15 over random and original, both paired p-values are at most 0.05, and regression loss is at most 0.05
+    on_decisive: select dose 24 and unlock untouched confirmation
+    otherwise: stop negative
+  confirmation:
+    pass_if: targeted lift over random is at least 0.15 with paired p at most 0.05 on untouched confirmation, and combined primary-plus-confirmation paired p is at most 0.01
+    final_support_requires: primary comparison against random and original, untouched confirmation against random, and primary regression within limit
+oracle_policy:
+  launch: false
+  rationale: The selected targeted distribution already directly instantiates the validated narrow viewpoint region; a center-only oracle would not answer a remaining causal question.
+reporting:
+  required: [paired_outcomes, Wilson_95_intervals, effect_sizes, target_and_regression_counts, actual_PBS_accounting, failed_and_cancelled_jobs, dataset_provenance, decision_rationale]
+  claim_scope_on_pass: Replicated support across the earlier LIBERO Spatial result and this independent LIBERO-10 articulated-sequence boundary; not a universal all-policy claim.
+locked_artifacts:
+  experiment_config: {path: configs/pi05_libero_viewpoint_intervention_v1.yaml, sha256: 9f94cfa93acf68366cb93b8c187f05fc2180fe4bca9188bcd577eb54ae675284}
+  dose8_spec: {path: artifacts/manifests/interventions/pi05-libero10-viewpoint-d8-v1.yaml, sha256: 0b6509b67a317edf9ca4916839a6fba14f06084e203905c310391a29498b1499}
+  dose24_spec: {path: artifacts/manifests/interventions/pi05-libero10-viewpoint-d24-v1.yaml, sha256: 50252dc30f3a6bf342c812f829bb7d7807591abdfbaba816689c16c8361eed4c}
+  source_pool_plan: {path: configs/plans/pi05-libero10-viewpoint-v1/source_pool.jsonl, sha256: 399c6770efe13733fc6ca8645a834473b0443f66f27d99041d0afc84701686d8, rollouts: 30}
+  baseline_and_source_plan: {path: configs/plans/pi05-libero10-viewpoint-v1/baseline_and_source.jsonl, sha256: 9750d742e46a69285a41d419e0a8743ae8a5bdda2c067cac6167478ad891c7f7, rollouts: 110}
+  primary_evaluation_plan: {path: configs/plans/pi05-libero10-viewpoint-v1/primary_evaluation.jsonl, sha256: 14277e2fafa61e2bf50d3493b9258f4e6e77de79948c6d749e9ad56d97f1a2e4, rollouts: 80}
+  untouched_confirmation_plan: {path: configs/plans/pi05-libero10-viewpoint-v1/confirmation_evaluation.jsonl, sha256: e1895a173f46dc2ab72ed312bad69dcd8ce7df5d6d0c591868086c5d88f0bf79, rollouts: 40}
+  planning_implementation_sha256: c949c0d7d2ec00ad0fa50bac05cd4642d2294da71c6026d64b0689002e6422dc
+  matched_replay_implementation_sha256: 22a5796a56e10ac1a05884b4483b4846eb154b7d2424368c62dd7566fac4aa6e
+  train_evaluate_pbs_sha256: 77b71f8cc3722b2dfe8265dd7ad9475ca0621a75dd201c8b8bb22242e57cde8f
+  gate_implementation: {path: src/meridian/viewpoint_gate.py, sha256: 5e0235a6e5b615d01771b02ae86f2fd2b1b9e6aa947addb1f972ef2d6949f592}
+  gate_cli: {path: scripts/evaluate_viewpoint_intervention_gate.py, sha256: 711e014e1f9c8290c688c102cf090ea3e8ddb09e287460585d303c98d9c03efc}
+cost_envelope:
+  cumulative_measured_su_before_campaign: 351.0552766631
+  expected_small_stage_su: [120, 190]
+  expected_confirmation_su: [35, 60]
+  expected_medium_stage_if_needed_su: [80, 150]
+  note: Ranges use measured 61.03 SU per 120 released rollouts, 5.53 SU for 32 replay trajectories, and 21.8-24.6 SU per prior 60-rollout dose-8 train/evaluate arm. Sixty SU remains guidance, not a ceiling.

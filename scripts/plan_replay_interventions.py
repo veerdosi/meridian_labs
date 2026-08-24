@@ -53,6 +53,16 @@ def main() -> None:
     for path in args.source_rollouts:
         records.extend(json.loads(line) for line in path.read_text().splitlines() if line)
     sources = [record for record in records if record["success"]]
+    source_filter = payload.get("source_filter", {})
+    for field, expected in source_filter.items():
+        if field == "evaluation_suite":
+            sources = [
+                record
+                for record in sources
+                if record.get("parameters", {}).get("evaluation_suite") == expected
+            ]
+        else:
+            sources = [record for record in sources if record.get(field) == expected]
     if not sources:
         raise SystemExit("no successful source rollouts")
     canonical = {axis.name: axis.canonical for axis in spec.parameter_space.axes}
@@ -62,6 +72,22 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
     used_source_ids = set()
+    intervention_axes = set(payload.get("intervention_axes", OBSERVATION_AXES))
+    if not intervention_axes <= OBSERVATION_AXES:
+        raise SystemExit(f"unsupported intervention axes: {sorted(intervention_axes - OBSERVATION_AXES)}")
+    match_sources = bool(payload.get("match_sources_across_arms", False))
+    matched_sources = sources
+    matched_init_bounds = payload.get("matched_source_init_bounds")
+    if matched_init_bounds is not None:
+        matched_sources = [
+            source
+            for source in matched_sources
+            if matched_init_bounds[0] <= source["init_state_index"] <= matched_init_bounds[1]
+        ]
+    if not matched_sources:
+        raise SystemExit("no source rollouts satisfy the matched source pool")
+    matched_rng = np.random.default_rng(int(payload.get("matched_source_seed", 0)))
+    matched_order = matched_rng.permutation(len(matched_sources))
     for intervention in interventions:
         if intervention.arm in {InterventionArm.NONE, InterventionArm.NO_DATA_FIX}:
             continue
@@ -88,12 +114,24 @@ def main() -> None:
             target_components = [bool(value) for value in rng.permutation(flags)]
         plans = []
         for index in range(intervention.trajectory_count):
-            source = eligible[int(order[index % len(order)])]
+            source = (
+                matched_sources[int(matched_order[index % len(matched_order)])]
+                if match_sources
+                else eligible[int(order[index % len(order)])]
+            )
+            if (
+                intervention.arm in {InterventionArm.TARGETED, InterventionArm.ORACLE}
+                and init_bounds
+                and not init_bounds[0] <= source["init_state_index"] <= init_bounds[1]
+            ):
+                raise SystemExit(
+                    f"matched source {source['id']} violates bounds for {intervention.id}"
+                )
             point = dict(canonical)
             point["init_state_index"] = float(source["init_state_index"])
             use_target_component = target_components[index]
             for axis in spec.parameter_space.axes:
-                if axis.name not in OBSERVATION_AXES:
+                if axis.name not in intervention_axes:
                     continue
                 low, high = intervention.target_bounds[axis.name]
                 point[axis.name] = sample_axis_value(
@@ -138,6 +176,8 @@ def main() -> None:
                 plan["sampling_component"] == "target" for plan in plans
             ),
             "unique_sources": len({plan["source_rollout_id"] for plan in plans}),
+            "sources_matched_across_arms": match_sources,
+            "intervention_axes": sorted(intervention_axes),
             "path": str(output),
         }
     source_output = args.output / "sources.jsonl"

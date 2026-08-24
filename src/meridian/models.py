@@ -64,6 +64,7 @@ class ExperimentSpec(BaseModel):
     checkpoint_id: str
     checkpoint_source: str
     task_suite: str
+    task_id: int = Field(default=0, ge=0)
     target_metric: str = "success"
     regression_suites: list[str]
     evaluation_seeds: list[int]

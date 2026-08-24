@@ -20,6 +20,7 @@ DATASET_REPO="meridian/${RUN_ID}_${ARM}"
 EXP_NAME="$RUN_ID-$ARM"
 TRAIN_STEPS=${TRAIN_STEPS:-100}
 POLICY_PORT=${POLICY_PORT:-8001}
+READINESS_TIMEOUT=${READINESS_TIMEOUT:-900}
 export OPENPI_DATA_HOME="$ROOT/cache/openpi"
 export UV_CACHE_DIR="$ROOT/cache/uv"
 export HF_LEROBOT_HOME="$ROOT/datasets/lerobot"
@@ -69,7 +70,7 @@ test -d "$CHECKPOINT/params"
   --policy.config meridian_pi05_libero \
   --policy.dir "$CHECKPOINT" > "$RUN_ROOT/server.log" 2>&1 &
 SERVER_PID=$!
-timeout 300 "$ROOT/envs/openpi/bin/python" - <<PY \
+timeout "$READINESS_TIMEOUT" "$ROOT/envs/openpi/bin/python" - <<PY \
   > "$RUN_ROOT/readiness.log" 2>&1
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
 client = WebsocketClientPolicy("127.0.0.1", $POLICY_PORT)
@@ -104,7 +105,7 @@ printf '{"conversion_seconds":%d,"training_seconds":%d,"server_start_seconds":%d
   "$((training_end-conversion_end))" \
   "$((server_ready-training_end))" \
   "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
-printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\n' \
-  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" \
+printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
+  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
   > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"

@@ -39,7 +39,7 @@ def main() -> None:
                 {
                     "id": f"target-seed{evaluation_seed}-repeat{repeat}",
                     "task_suite": spec.task_suite,
-                    "task_id": 0,
+                    "task_id": spec.task_id,
                     "seed": evaluation_seed * 100 + repeat,
                     "evaluation_suite": "target",
                     "evaluation_seed": evaluation_seed,
