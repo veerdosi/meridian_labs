@@ -10,21 +10,6 @@ around Codex to run the research process: choose experiments, read videos and Mu
 bad hypotheses, select training data, run controlled fine-tunes, and decide when the evidence is
 strong enough to continue.
 
-The first useful failure it found was remarkably specific. On the instruction **put the frying pan
-on the stove**, π0.5 repeatedly manipulated the moka pot while leaving the frying pan where it
-started. On **put the white bowl to the right of the plate**, it moved the plate and barely touched
-the bowl.
-
-The behavior first appeared in 12 discovery trials, then repeated in all 16 trials of a locked
-confirmation experiment. Giving the policy twice as long did not fix it. Replanning more frequently
-did not fix it. Replanning less frequently did not fix it.
-The robot could approach, make contact, and move objects. It consistently chose the wrong object.
-
-That is the point where this project currently stands. The failure has survived confirmation, the
-corrective demonstrations have been sourced and checked, and the intervention comparison is
-locked. Training has not run yet, so I do not have a success result to announce. This post follows
-the experiments up to that boundary and will grow with the campaign.
-
 ## The research loop I wanted
 
 Most robot-policy evaluations end with a success rate. That number is useful for comparison and
@@ -37,10 +22,6 @@ I gave Codex three questions to answer:
 1. Where in the behavior is the gap?
 2. What kind of experience is missing?
 3. How much corrective data is enough?
-
-The third question matters as much as the first two. If four carefully chosen demonstrations fix a
-failure, I want to know that. If eight help no more than four, I want the experiment to stop. If a
-random sample works equally well, then the diagnosis did not earn its keep.
 
 The resulting loop looks like this:
 
@@ -128,27 +109,27 @@ Goal, LIBERO-10, and LIBERO-90. π0.5 ran six canonical rollouts per task for 60
 Before inference, a state-only inventory checked 500 initial states and verified that none already
 satisfied its goal. I also separated states by purpose before seeing outcomes:
 
-| Partition | Use | State indices |
-| --- | --- | --- |
-| Discovery | Find a repeatable behavior | 0, 3, 6, 9, 12, 15 |
-| Confirmation | Challenge the diagnosis | 18, 21 |
-| Training source | Select corrective demonstrations | 25 to 39 |
-| Untouched holdout | Final target evaluation | 40 to 49 |
+| Partition         | Use                              | State indices      |
+| ----------------- | -------------------------------- | ------------------ |
+| Discovery         | Find a repeatable behavior       | 0, 3, 6, 9, 12, 15 |
+| Confirmation      | Challenge the diagnosis          | 18, 21             |
+| Training source   | Select corrective demonstrations | 25 to 39           |
+| Untouched holdout | Final target evaluation          | 40 to 49           |
 
 The policy solved 48 of 60 trials. Eight tasks were perfect at 6/6. Two LIBERO-90 tasks were 0/6.
 
-| Suite | Task | Successes |
-| --- | --- | ---: |
-| LIBERO Spatial | black bowl between plate and ramekin to plate | 6/6 |
-| LIBERO Spatial | black bowl from top drawer to plate | 6/6 |
-| LIBERO Object | alphabet soup to basket | 6/6 |
-| LIBERO Object | milk to basket | 6/6 |
-| LIBERO Goal | open the middle drawer | 6/6 |
-| LIBERO Goal | cream cheese to bowl | 6/6 |
-| LIBERO-10 | turn on stove, then place moka pot | 6/6 |
-| LIBERO-10 | book to back compartment of caddy | 6/6 |
-| LIBERO-90 | frying pan to stove | 0/6 |
-| LIBERO-90 | white bowl to right of plate | 0/6 |
+| Suite          | Task                                          | Successes |
+| -------------- | --------------------------------------------- | --------: |
+| LIBERO Spatial | black bowl between plate and ramekin to plate |       6/6 |
+| LIBERO Spatial | black bowl from top drawer to plate           |       6/6 |
+| LIBERO Object  | alphabet soup to basket                       |       6/6 |
+| LIBERO Object  | milk to basket                                |       6/6 |
+| LIBERO Goal    | open the middle drawer                        |       6/6 |
+| LIBERO Goal    | cream cheese to bowl                          |       6/6 |
+| LIBERO-10      | turn on stove, then place moka pot            |       6/6 |
+| LIBERO-10      | book to back compartment of caddy             |       6/6 |
+| LIBERO-90      | frying pan to stove                           |       0/6 |
+| LIBERO-90      | white bowl to right of plate                  |       0/6 |
 
 The aggregate success rate was 80 percent, but the task split told a better story. π0.5 was not
 slightly worse everywhere. It was completely reliable on eight tasks and repeatedly wrong on two.
@@ -208,12 +189,12 @@ purpose of the next experiment.
 The confirmation plan used two previously unseen initial states for each task and four control
 settings per state:
 
-| Control | Action replanning interval | Horizon |
-| --- | ---: | ---: |
-| Canonical | 5 steps | 400 steps |
-| Rapid replanning | 1 step | 400 steps |
-| Longer action chunk | 10 steps | 400 steps |
-| Extended episode | 5 steps | 800 steps |
+| Control             | Action replanning interval |   Horizon |
+| ------------------- | -------------------------: | --------: |
+| Canonical           |                    5 steps | 400 steps |
+| Rapid replanning    |                     1 step | 400 steps |
+| Longer action chunk |                   10 steps | 400 steps |
+| Extended episode    |                    5 steps | 800 steps |
 
 This produced 16 confirmation rollouts. The gate was written before any outcome was inspected. The
 behavior had to repeat on both tasks, appear in at least 12 of 16 traces, and persist under the
@@ -304,12 +285,12 @@ compute on a weaker comparison before the main claim survives.
 The campaign starts from the released π0.5 checkpoint and evaluates four conditions when the gates
 justify them:
 
-| Condition | Training data | Question |
-| --- | --- | --- |
-| Baseline | none | How often does the released checkpoint solve the boundary? |
-| Targeted | geometry-selected examples from the two tasks | Did the diagnosis choose useful data? |
-| Same-task random | seeded random examples from the same pool | Would arbitrary examples work as well? |
-| Original distribution | familiar four-suite examples | Does ordinary rehearsal produce the same effect? |
+| Condition             | Training data                                 | Question                                                   |
+| --------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| Baseline              | none                                          | How often does the released checkpoint solve the boundary? |
+| Targeted              | geometry-selected examples from the two tasks | Did the diagnosis choose useful data?                      |
+| Same-task random      | seeded random examples from the same pool     | Would arbitrary examples work as well?                     |
+| Original distribution | familiar four-suite examples                  | Does ordinary rehearsal produce the same effect?           |
 
 The initial dose is four episodes in total, two per task. If that dose passes the locked comparison,
 the next dose contains eight episodes in total, four per task, with the smaller targeted set nested
