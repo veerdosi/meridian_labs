@@ -81,6 +81,32 @@ def trajectory_metrics(trajectory: Mapping[str, np.ndarray], schema: Mapping[str
         key=lambda name: motions[name]["maximum_translation_m"],
         default=None,
     )
+    goal_target_objects = list(
+        dict.fromkeys(
+            str(predicate[1])
+            for predicate in schema.get("goal_predicates", [])
+            if len(predicate) > 1
+        )
+    )
+    target_joints = [
+        name
+        for name in motions
+        if any(
+            name == target or name.startswith(f"{target}_joint")
+            for target in goal_target_objects
+        )
+    ]
+    target_joint = max(
+        target_joints,
+        key=lambda name: motions[name]["maximum_translation_m"],
+        default=None,
+    )
+    distractor_joints = [name for name in motions if name not in target_joints]
+    distractor_joint = max(
+        distractor_joints,
+        key=lambda name: motions[name]["maximum_translation_m"],
+        default=None,
+    )
     robot_contact = _robot_contact_mask(contacts, schema)
     contact_steps = np.flatnonzero(robot_contact)
     predicate_count = len(schema.get("goal_predicates", []))
@@ -102,6 +128,18 @@ def trajectory_metrics(trajectory: Mapping[str, np.ndarray], schema: Mapping[str
         "first_robot_contact_step": int(contact_steps[0]) if len(contact_steps) else None,
         "most_moved_free_joint": moving_joint,
         "free_joint_motion": motions,
+        "goal_target_objects": goal_target_objects,
+        "goal_target_free_joint": target_joint,
+        "max_target_object_translation_m": (
+            motions[target_joint]["maximum_translation_m"] if target_joint else None
+        ),
+        "final_target_object_translation_m": (
+            motions[target_joint]["final_translation_m"] if target_joint else None
+        ),
+        "most_moved_distractor_free_joint": distractor_joint,
+        "max_distractor_translation_m": (
+            motions[distractor_joint]["maximum_translation_m"] if distractor_joint else 0.0
+        ),
         "articulated_joint_motion": articulations,
         "max_articulation_change": max(articulations.values(), default=0.0),
         "max_object_translation_m": (
@@ -144,6 +182,9 @@ def diagnose_stage(
     peak_motion = float(metrics["max_object_translation_m"])
     final_motion = float(metrics["final_object_translation_m"])
     articulation = float(metrics.get("max_articulation_change", 0.0))
+    target_peak_value = metrics.get("max_target_object_translation_m")
+    target_peak = float(target_peak_value) if target_peak_value is not None else None
+    distractor_peak = float(metrics.get("max_distractor_translation_m", 0.0))
     physical_progress = peak_motion >= min_object_motion_m or articulation >= min_articulation_change
     evidence = [
         f"end-effector path={eef_path:.4f} m",
@@ -151,6 +192,12 @@ def diagnose_stage(
         f"maximum object translation={peak_motion:.4f} m",
         f"final object translation={final_motion:.4f} m",
         f"maximum non-robot articulation change={articulation:.4f}",
+        (
+            "goal-target translation=unavailable"
+            if target_peak is None
+            else f"maximum goal-target translation={target_peak:.4f} m"
+        ),
+        f"maximum distractor translation={distractor_peak:.4f} m",
         (
             "goal predicates finally satisfied="
             f"{int(metrics.get('goal_predicates_finally_satisfied', 0))}/"
@@ -168,6 +215,17 @@ def diagnose_stage(
         stage = "sequencing"
         missing = ["temporal", "strategy", "sequencing"]
         alternatives = ["insufficient horizon", "second-subgoal localization failure"]
+    elif (
+        target_peak is not None
+        and target_peak < min_object_motion_m
+        and distractor_peak >= min_object_motion_m
+    ):
+        stage = "object_selection_or_role_binding"
+        missing = ["task", "object", "strategy"]
+        alternatives = [
+            "language-role grounding failure",
+            "policy reused a familiar but incorrect task strategy",
+        ]
     elif eef_path < min_eef_path_m:
         stage = "localization_or_strategy"
         missing = ["initial_state", "object_pose", "strategy"]

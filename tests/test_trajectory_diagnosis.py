@@ -65,3 +65,27 @@ def test_exact_bddl_subgoal_progress_takes_precedence() -> None:
         "goal_predicate_regressions": 0,
     }
     assert diagnose_stage(metrics, success=False)["stage"] == "sequencing"
+
+
+def test_wrong_object_motion_is_role_binding_not_progress() -> None:
+    schema = {
+        "joint_names": ["target_joint0", "distractor_joint0"],
+        "joint_types": [0, 0],
+        "joint_qpos_addresses": [0, 7],
+        "geom_names": ["robot0_rightfinger", "target", "distractor"],
+        "goal_predicates": [["on", "target", "region"]],
+    }
+    steps = 5
+    qpos = np.zeros((steps, 14))
+    qpos[:, 7] = np.linspace(0, 0.2, steps)
+    trajectory_value = {
+        "state": np.column_stack((np.linspace(0, 0.2, steps), np.zeros((steps, 7)))),
+        "sim_qpos": qpos,
+        "contact_geom_ids": np.full((steps, 1, 2), -1, dtype=np.int32),
+    }
+    metrics = trajectory_metrics(trajectory_value, schema)
+    assert metrics["goal_target_free_joint"] == "target_joint0"
+    assert metrics["most_moved_distractor_free_joint"] == "distractor_joint0"
+    assert metrics["max_target_object_translation_m"] == 0.0
+    assert metrics["max_distractor_translation_m"] == 0.2
+    assert diagnose_stage(metrics, success=False)["stage"] == "object_selection_or_role_binding"

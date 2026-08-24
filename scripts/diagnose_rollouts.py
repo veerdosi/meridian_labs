@@ -25,7 +25,7 @@ def main() -> None:
         raise ValueError("no rollout records")
     diagnoses = [diagnose_record(record) for record in records]
     payload = {
-        "schema": "meridian-physical-stage-diagnosis-v1",
+        "schema": "meridian-physical-stage-diagnosis-v2",
         "records": diagnoses,
         "limitations": [
             "stage labels localize observed behavior but do not identify a unique root cause",
