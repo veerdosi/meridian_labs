@@ -67,14 +67,20 @@ original-distribution data reached 18/20. I used that result to revise the selec
 claim a targeted-data win. A second, locked dose-eight campaign concentrated six examples near the
 measured boundary and kept two for broader coverage.
 
+Every trained arm started from the same released `pi05_libero` checkpoint and fine-tuned LoRA
+adapters for 100 optimizer steps. I used batch size 2, AdamW with gradient clipping at 1.0, and a
+cosine schedule with 10 warmup steps and a peak learning rate of 5 × 10⁻⁵. The π0.5 action horizon
+remained 10. The first comparison used 24 trajectories per arm; the refined comparison used eight.
+Nothing except the selected training trajectories changed between equal-dose arms.
+
 This time the table looked excellent:
 
-| Condition | Target success | Regression success |
-| --- | ---: | ---: |
-| Released checkpoint | 21/40 | 19/20 |
-| Evidence-weighted targeted | 40/40 | 20/20 |
-| Same-dose random | 37/40 | 20/20 |
-| Original distribution | 8/40 | 18/20 |
+| Condition                  | Target success | Regression success |
+| -------------------------- | -------------: | -----------------: |
+| Released checkpoint        |          21/40 |              19/20 |
+| Evidence-weighted targeted |          40/40 |              20/20 |
+| Same-dose random           |          37/40 |              20/20 |
+| Original distribution      |           8/40 |              18/20 |
 
 Targeted beat the released checkpoint by 19 trials and random by three, with no target losses in
 either paired comparison. It also reached the ceiling, so the stopping rule rejected a larger dose.
@@ -87,8 +93,6 @@ whether the intervention had created a difficult but solvable viewpoint or simpl
 information required to solve the task.
 
 I threw away the result.
-
-The failure was methodological, and it changed the harness.
 
 ![The recording preflight with clean observer view, policy input, and wrist-camera view.](../artifacts/physical-preflight/15246052/diagnostic-montage.png)
 
@@ -293,6 +297,11 @@ The initial dose is four episodes in total, two per task. If that dose passes th
 the next dose contains eight episodes in total, four per task, with the smaller targeted set nested
 inside the larger one. Nesting matters because the dose curve should measure the value of adding
 examples rather than replacing one small sample with an unrelated larger sample.
+
+The current fine-tunes use the same controlled recipe: the released π0.5 checkpoint, LoRA adapters,
+100 optimizer steps, batch size 2, AdamW with gradient clipping at 1.0, 10 warmup steps, and a peak
+learning rate of 5 × 10⁻⁵. Targeted and random receive the same number of parameter updates as well
+as the same number of episodes. Only episode selection differs.
 
 Every trained arm is evaluated on 40 target trials from untouched states and 20 regression trials.
 The analysis reports per-task and pooled success, paired trial outcomes, Wilson confidence
