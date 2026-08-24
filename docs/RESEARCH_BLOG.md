@@ -46,10 +46,39 @@ their outcomes. Codex can edit the code that implements the loop, with every cha
 version control. Human video review remains part of the protocol because a structurally valid
 record can still be a scientifically meaningless experiment.
 
-## The first experiment looked good until I watched it
+## The first task and the result I almost kept
 
-The first intervention pilot completed the software path from rollout to fine-tuning and produced a
-numerical gain. I thought I had a result. Then I inspected the videos.
+I started with LIBERO Spatial task 0: pick up the black bowl between the plate and the ramekin and
+place it on the plate. I chose it because the released policy was competent on the ordinary task,
+which gave the experiment room to isolate a boundary rather than teach the task from scratch. It
+solved all 40 rollouts in the initial envelope. A wider 24-rollout search produced two failures
+under a combination of camera translation, camera rotation, image occlusion, visual distractors,
+action noise, and faster replanning.
+
+One profile reproduced its failure in four of five new trials. Matched probes then narrowed the
+interaction: under the stressed observation, two-step replanning succeeded in 0/5 trials while the
+canonical five-step controller succeeded in 3/5. That looked like a useful boundary. The policy
+could solve the task, but unstable observations combined with frequent action resampling appeared
+to break it.
+
+The first data intervention was informative but negative. Targeted data improved the released
+checkpoint from 9/20 to 16/20 target successes, but random data reached 19/20 and
+original-distribution data reached 18/20. I used that result to revise the selector rather than
+claim a targeted-data win. A second, locked dose-eight campaign concentrated six examples near the
+measured boundary and kept two for broader coverage.
+
+This time the table looked excellent:
+
+| Condition | Target success | Regression success |
+| --- | ---: | ---: |
+| Released checkpoint | 21/40 | 19/20 |
+| Evidence-weighted targeted | 40/40 | 20/20 |
+| Same-dose random | 37/40 | 20/20 |
+| Original distribution | 8/40 | 18/20 |
+
+Targeted beat the released checkpoint by 19 trials and random by three, with no target losses in
+either paired comparison. It also reached the ceiling, so the stopping rule rejected a larger dose.
+I thought I had the first complete result. Then I inspected the videos.
 
 A black mask covered roughly a quarter of the observer image. The accompanying camera transform
 pushed the robot, the manipulated bowl, and the goal plate outside the field of view. Worse, the
@@ -59,11 +88,7 @@ information required to solve the task.
 
 I threw away the result.
 
-The failure was methodological, and it changed the harness. Every rollout now records the clean
-observer view, the exact observer image sent to π0.5, the exact wrist image sent to π0.5, and a
-side-by-side diagnostic video containing the rollout parameters and final result. Candidate
-interventions must preserve enough visibility for the task to remain well-posed. I inspect videos
-before spending training compute.
+The failure was methodological, and it changed the harness.
 
 ![The recording preflight with clean observer view, policy input, and wrist-camera view.](../artifacts/physical-preflight/15246052/diagnostic-montage.png)
 
@@ -252,34 +277,6 @@ set across the two tasks that spreads coverage through that geometry. This is a 
 of the diagnosis: teach π0.5 the target and reference roles across varied initial arrangements while
 retaining successful approach, grasp, transport, and placement actions.
 
-## A random control that can actually beat us
-
-An easy control would sample unrelated tasks and call the result random data. That would make a
-targeted win hard to interpret. The model might improve simply because it saw the two failing tasks,
-regardless of which examples Codex selected.
-
-The primary comparison therefore keeps the task identity fixed. Targeted and random use:
-
-- the same two failing tasks;
-- the same protected pool of successful training episodes;
-- the same number of episodes at each dose;
-- the same checkpoint, optimizer schedule, and training steps; and
-- the same target and regression evaluations.
-
-Only selection changes. The targeted arm uses the locked geometry-coverage score. The random arm
-uses a locked seed and samples from the same eligible episodes without looking at geometry. Random
-can win if the diagnosis is unhelpful, if the geometry score captures the wrong feature, or if a
-few ordinary same-task examples are all π0.5 needs.
-
-This comparison asks a precise question: does the diagnosis identify better corrective examples
-than arbitrary examples from the same tasks?
-
-Original-distribution rehearsal answers a separate, secondary question. It draws from the four
-familiar LIBERO suites represented in the released checkpoint rather than from these two selected
-LIBERO-90 tasks. I will run that arm only if targeted selection first beats the strong same-task
-random control without crossing the regression limit. This ordering avoids spending training
-compute on a weaker comparison before the main claim survives.
-
 ## How the intervention will be judged
 
 The campaign starts from the released π0.5 checkpoint and evaluates four conditions when the gates
@@ -329,8 +326,7 @@ For these manipulation tasks, the expert would use MuJoCo's privileged state:
 8. Add controlled variation across training-only object poses and robot initial states.
 
 The predicate would serve as the acceptance test. A generated trajectory would enter training only
-after it completes the task and remains stable. The recorder, partitioning logic, and conversion
-checks built for the current campaign are the pieces that this experiment would reuse.
+after it completes the task and remains stable.
 
 ## Intervention results
 
