@@ -85,7 +85,7 @@ validation_execution:
   plan: configs/plans/pi05-semantic-validation-v1/validation_plans.jsonl
   plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
   rollouts: 120
-  state: retry_pending_after_startup_failure
+  state: retry_2_submitted
   job_id: 15242910.pbs101
   requested_walltime: 02:00:00
   requested_ngpus: 1
@@ -100,6 +100,11 @@ validation_execution:
       readiness_log_bytes: 0
       classification: transient_policy_server_startup_timeout
       scientific_use: none
+    - job_id: 15243125.pbs101
+      state_at_submission: queued
+      plan_sha256: e496e6bf81029e274db611b55638306b031ed57f1083371a7b7086075c044363
+      requested_walltime: 02:00:00
+      requested_ngpus: 1
 accounting:
   campaign_su_to_date: 29.28
   cumulative_measured_su: 284.6730544409
