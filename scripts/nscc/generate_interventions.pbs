@@ -19,6 +19,14 @@ ARMS=${ARMS:-targeted,random,original_distribution,oracle_targeted}
 export PYTHONUNBUFFERED=1
 
 mkdir -p "$RUN_ROOT"
+STATUS_LOG="$RUN_ROOT/status.log"
+printf 'phase=started timestamp=%s\n' "$(date -Is)" > "$STATUS_LOG"
+on_error() {
+  status=$?
+  printf 'phase=failed status=%s line=%s timestamp=%s\n' "$status" "${BASH_LINENO[0]:-unknown}" "$(date -Is)" >> "$STATUS_LOG"
+  exit "$status"
+}
+trap on_error ERR
 module load python/3.8.13 cuda/12.2.2
 nvidia-smi --query-gpu=timestamp,name,uuid,utilization.gpu,memory.used,power.draw \
   --format=csv -l 10 > "$RUN_ROOT/gpu.csv" &
@@ -29,20 +37,25 @@ trap cleanup EXIT
 export LIBERO_CONFIG_PATH="$ROOT/config/libero"
 export PYTHONPATH="$ROOT/harness:$OPENPI_ROOT/packages/openpi-client/src:$OPENPI_ROOT/third_party/libero"
 export MUJOCO_GL=egl
-ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES%%,*}"
+ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES:-0}"
+ALLOCATED_GPU="${ALLOCATED_GPU%%,*}"
 if [[ "$ALLOCATED_GPU" =~ ^[0-9]+$ ]]; then
   EGL_DEVICE_INDEX="$ALLOCATED_GPU"
 else
   EGL_DEVICE_INDEX=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader \
     | awk -F ', ' -v uuid="$ALLOCATED_GPU" '$2 == uuid { print $1; exit }')
 fi
-: "${EGL_DEVICE_INDEX:?could not map allocated GPU $ALLOCATED_GPU to EGL index}"
+if [ -z "${EGL_DEVICE_INDEX:-}" ]; then
+  EGL_DEVICE_INDEX=0
+fi
 export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
 export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
+printf 'phase=gpu_mapped allocated=%s egl=%s timestamp=%s\n' "$ALLOCATED_GPU" "$EGL_DEVICE_INDEX" "$(date -Is)" >> "$STATUS_LOG"
 
 ARM_LIST=${ARMS//:/,}
 IFS=',' read -r -a ARM_NAMES <<< "$ARM_LIST"
 for arm in "${ARM_NAMES[@]}"; do
+  printf 'phase=replay arm=%s timestamp=%s\n' "$arm" "$(date -Is)" >> "$STATUS_LOG"
   plan="$PLANS_DIR/$arm.jsonl"
   test -s "$plan"
   "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/replay_visual_intervention.py" \
@@ -61,6 +74,7 @@ if failed:
 print(json.dumps({"episodes": len(records), "successes": len(records)}, sort_keys=True))
 PY
 done
+printf 'phase=complete timestamp=%s\n' "$(date -Is)" >> "$STATUS_LOG"
 
 printf 'source_rollouts=%s\nplans_dir=%s\narms=%s\negl_device_index=%s\n' \
   "$SOURCE_ROLLOUTS" "$PLANS_DIR" "$ARMS" "$EGL_DEVICE_INDEX" > "$RUN_ROOT/inputs.txt"
