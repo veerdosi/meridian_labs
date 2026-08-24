@@ -8,16 +8,15 @@
 #PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
 
 set -euo pipefail
-: "${DATASET_JSONL:?absolute cluster path to successful intervention rollouts}"
 : "${ARM:?targeted, random, original_distribution, or oracle_targeted}"
 : "${RUN_ID:?unique intervention campaign id}"
 : "${EVAL_PLANS:?absolute cluster path to target and regression plans}"
 : "${EXPECTED_EPISODES:?locked intervention dose}"
+: "${DATASET_REPO:?validated prebuilt LeRobot repository ID}"
 
 ROOT=/scratch/users/ntu/veer001/meridian_labs
 OPENPI_ROOT="$ROOT/src/openpi"
 RUN_ROOT="$ROOT/artifacts/interventions/$RUN_ID/$ARM/$PBS_JOBID"
-DATASET_REPO="meridian/${RUN_ID}_${ARM}"
 EXP_NAME="$RUN_ID-$ARM"
 TRAIN_STEPS=${TRAIN_STEPS:-100}
 POLICY_PORT=${POLICY_PORT:-8001}
@@ -50,12 +49,16 @@ cleanup() {
 trap cleanup EXIT
 
 phase_start=$(date +%s)
-"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_meridian_to_lerobot.py" \
-  --rollouts "$DATASET_JSONL" \
-  --repo-id "$DATASET_REPO" \
-  --output-root "$HF_LEROBOT_HOME" \
-  --expected-episodes "$EXPECTED_EPISODES" | tee "$RUN_ROOT/conversion.json"
-conversion_end=$(date +%s)
+DATASET_ROOT="$HF_LEROBOT_HOME/$DATASET_REPO"
+test -d "$DATASET_ROOT/meta"
+OBSERVED_EPISODES=$(find "$DATASET_ROOT/data" -type f -name 'episode_*.parquet' | wc -l)
+if [ "$OBSERVED_EPISODES" -ne "$EXPECTED_EPISODES" ]; then
+  echo "prebuilt dataset has $OBSERVED_EPISODES/$EXPECTED_EPISODES episodes" >&2
+  exit 2
+fi
+printf '{"source":"prebuilt_lerobot","repo_id":"%s","episodes":%d}\n' \
+  "$DATASET_REPO" "$OBSERVED_EPISODES" | tee "$RUN_ROOT/dataset-validation.json"
+dataset_ready=$(date +%s)
 
 cd "$OPENPI_ROOT"
 "$ROOT/envs/openpi/bin/python" scripts/train.py meridian_pi05_libero \
@@ -103,12 +106,12 @@ export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
   > >(tee "$RUN_ROOT/evaluation.log") 2>&1
 evaluation_end=$(date +%s)
 
-printf '{"conversion_seconds":%d,"training_seconds":%d,"server_start_seconds":%d,"evaluation_seconds":%d}\n' \
-  "$((conversion_end-phase_start))" \
-  "$((training_end-conversion_end))" \
+printf '{"dataset_validation_seconds":%d,"training_seconds":%d,"server_start_seconds":%d,"evaluation_seconds":%d}\n' \
+  "$((dataset_ready-phase_start))" \
+  "$((training_end-dataset_ready))" \
   "$((server_ready-training_end))" \
   "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
-printf 'arm=%s\ndataset_repo=%s\ndataset_jsonl=%s\nexpected_episodes=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
-  "$ARM" "$DATASET_REPO" "$DATASET_JSONL" "$EXPECTED_EPISODES" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
+printf 'arm=%s\ndataset_repo=%s\nexpected_episodes=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
+  "$ARM" "$DATASET_REPO" "$EXPECTED_EPISODES" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
   > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
