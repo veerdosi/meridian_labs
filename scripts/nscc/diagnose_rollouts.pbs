@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ncpus=4:mem=32GB
+#PBS -l walltime=01:00:00
+#PBS -N meridian-diagnose
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${ROLLOUTS_JSONL:?absolute cluster path to completed rollout records}"
+: "${RUN_ID:?unique diagnosis run ID}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+RUN_ROOT="$ROOT/artifacts/diagnoses/$RUN_ID/$PBS_JOBID"
+mkdir -p "$RUN_ROOT"
+
+module load python/3.8.13
+export PYTHONPATH="$ROOT/harness/src:$ROOT/harness"
+export PYTHONUNBUFFERED=1
+
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/diagnose_rollouts.py" \
+  --rollouts "$ROLLOUTS_JSONL" \
+  --output "$RUN_ROOT/diagnoses.json" \
+  > >(tee "$RUN_ROOT/diagnosis.log") 2>&1
+
+printf 'rollouts=%s\n' "$ROLLOUTS_JSONL" > "$RUN_ROOT/inputs.txt"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 \
+  | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
