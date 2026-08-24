@@ -103,9 +103,10 @@ def main() -> None:
     parser.add_argument("--plans", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    base_records = [json.loads(line) for line in args.base_rollout.read_text().splitlines() if line]
-    if not base_records or any(not record["success"] for record in base_records):
-        raise ValueError("visual intervention replay requires successful source rollouts")
+    all_records = [json.loads(line) for line in args.base_rollout.read_text().splitlines() if line]
+    base_records = [record for record in all_records if record["success"]]
+    if not base_records:
+        raise ValueError("visual intervention replay requires at least one successful source rollout")
     sources = {record["id"]: record for record in base_records}
     plans = [json.loads(line) for line in args.plans.read_text().splitlines() if line]
     args.output.mkdir(parents=True, exist_ok=True)
