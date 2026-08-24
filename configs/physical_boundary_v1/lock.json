@@ -1,5 +1,5 @@
 {
-  "config_sha256": "3b999d05a62b2c723ffff668c92bd4768fe49e6719ed95ee589acd678e3895e1",
+  "config_sha256": "452734bb1e249a35baed04e3892cb271dc4fe1afb71c35246ff3fec3d5cb2ccc",
   "schema": "meridian-physical-boundary-v1",
   "screening_plan_sha256": "cb85749604f8a99e8fc375f4d42fd8513b71d863a244a70a1b9f06bccbdc9473",
   "screening_trials": 60,

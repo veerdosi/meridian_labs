@@ -68,4 +68,4 @@ stopping:
   stop_data_path: targeted_not_strictly_better_or_regression_limit_exceeded
   oracle: run_only_for_a_remaining_discriminating_question
 screening_su_guidance: 60
-cumulative_measured_su_before_campaign: 436.9041655521
+cumulative_measured_su_before_campaign: 459.2330544410
