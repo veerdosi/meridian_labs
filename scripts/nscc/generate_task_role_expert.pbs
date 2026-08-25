@@ -36,6 +36,9 @@ export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
 
 VIDEO_FLAG=()
 if [ "$WRITE_VIDEOS" = 1 ]; then VIDEO_FLAG=(--write-videos); fi
+printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\n' \
+  "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" > "$RUN_ROOT/inputs.txt"
+sha256sum "$CONFIG" "$PLANS" > "$RUN_ROOT/input-sha256.txt"
 started=$(date +%s)
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/libero_task_role_expert.py" \
   --config "$CONFIG" \
@@ -56,8 +59,5 @@ verified=$(date +%s)
 
 printf '{"generation_seconds":%d,"verification_seconds":%d}\n' \
   "$((generated-started))" "$((verified-generated))" > "$RUN_ROOT/phase-times.json"
-printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\n' \
-  "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" > "$RUN_ROOT/inputs.txt"
-sha256sum "$CONFIG" "$PLANS" > "$RUN_ROOT/input-sha256.txt"
 find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 \
   | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
