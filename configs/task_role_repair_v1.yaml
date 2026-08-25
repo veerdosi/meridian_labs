@@ -1,0 +1,197 @@
+schema: task-role-repair-v1
+status: locked_before_expert_or_policy_outcomes
+locked_at_utc: "2026-08-25T04:00:49Z"
+scientific_question: >-
+  Does a diagnosed object-role failure identify simulator demonstrations that repair two
+  previously unsolved tasks more efficiently than equal-dose random demonstrations from the
+  same generator, without regressing established capabilities?
+
+policy:
+  checkpoint: gs://openpi-assets/checkpoints/pi05_libero
+  config: meridian_pi05_libero
+
+tasks:
+  - suite: libero_90
+    task_id: 18
+    name: frying_pan_to_stove
+    destination: flat_stove_1_cook_region
+    role_variants:
+      - id: original
+        prompt: put the frying pan on the stove
+        bddl: configs/task_role_repair_v1/bddl/frying_pan_to_stove.bddl
+        commanded_object: chefmate_8_frypan_1
+        commanded_joint: chefmate_8_frypan_1_joint0
+        other_object: moka_pot_1
+        other_joint: moka_pot_1_joint0
+        goal_predicate: ["on", chefmate_8_frypan_1, flat_stove_1_cook_region]
+      - id: counterfactual
+        prompt: put the moka pot on the stove
+        bddl: configs/task_role_repair_v1/bddl/moka_pot_to_stove.bddl
+        commanded_object: moka_pot_1
+        commanded_joint: moka_pot_1_joint0
+        other_object: chefmate_8_frypan_1
+        other_joint: chefmate_8_frypan_1_joint0
+        goal_predicate: ["on", moka_pot_1, flat_stove_1_cook_region]
+    expert_profiles:
+      chefmate_8_frypan_1:
+        grasp_offset_world_m: [0.0, 0.143, 0.016]
+        grasp_axis_angle_rad: [2.356, 2.056, 0.116]
+        place_offset_world_m: [0.0, 0.130, 0.060]
+        table_geom_z_m: 0.899
+      moka_pot_1:
+        grasp_offset_world_m: [0.0, 0.0, 0.020]
+        grasp_axis_angle_rad: [3.142, 0.0, 0.0]
+        place_offset_world_m: [0.0, 0.0, 0.060]
+        table_geom_z_m: 0.966
+    generator_bounds:
+      chefmate_8_frypan_1_x_m: [-0.18, 0.14]
+      chefmate_8_frypan_1_y_m: [-0.30, -0.08]
+      moka_pot_1_x_m: [-0.16, 0.16]
+      moka_pot_1_y_m: [-0.09, 0.10]
+      minimum_center_separation_m: 0.24
+    contrastive_layouts:
+      - {id: t18-l0, chefmate_8_frypan_1_xy_m: [-0.18, -0.30], moka_pot_1_xy_m: [0.16, 0.08]}
+      - {id: t18-l1, chefmate_8_frypan_1_xy_m: [0.14, -0.30], moka_pot_1_xy_m: [-0.16, 0.08]}
+      - {id: t18-l2, chefmate_8_frypan_1_xy_m: [-0.18, -0.18], moka_pot_1_xy_m: [0.12, 0.09]}
+      - {id: t18-l3, chefmate_8_frypan_1_xy_m: [0.14, -0.18], moka_pot_1_xy_m: [-0.14, 0.09]}
+      - {id: t18-l4, chefmate_8_frypan_1_xy_m: [-0.08, -0.30], moka_pot_1_xy_m: [0.14, -0.02]}
+      - {id: t18-l5, chefmate_8_frypan_1_xy_m: [0.08, -0.30], moka_pot_1_xy_m: [-0.14, -0.02]}
+  - suite: libero_90
+    task_id: 37
+    name: white_bowl_right_of_plate
+    destination: kitchen_table_plate_right_region
+    role_variants:
+      - id: original
+        prompt: put the white bowl to the right of the plate
+        bddl: configs/task_role_repair_v1/bddl/white_bowl_right_of_plate.bddl
+        commanded_object: white_bowl_1
+        commanded_joint: white_bowl_1_joint0
+        other_object: plate_1
+        other_joint: plate_1_joint0
+        goal_predicate: ["on", white_bowl_1, kitchen_table_plate_right_region]
+      - id: counterfactual
+        prompt: put the plate to the right of the white bowl
+        bddl: configs/task_role_repair_v1/bddl/plate_right_of_white_bowl.bddl
+        commanded_object: plate_1
+        commanded_joint: plate_1_joint0
+        other_object: white_bowl_1
+        other_joint: white_bowl_1_joint0
+        goal_predicate: ["on", plate_1, kitchen_table_plate_right_region]
+    expert_profiles:
+      white_bowl_1:
+        grasp_offset_world_m: [-0.018, 0.044, 0.015]
+        grasp_axis_angle_rad: [3.162, 0.099, 0.037]
+        place_offset_world_m: [-0.010, 0.030, 0.053]
+        table_geom_z_m: 0.902
+        microwave_top_geom_z_m: 1.107
+      plate_1:
+        grasp_offset_world_m: [0.0, 0.040, 0.015]
+        grasp_axis_angle_rad: [3.142, 0.0, 0.0]
+        place_offset_world_m: [0.0, 0.030, 0.045]
+        table_geom_z_m: 0.902
+        microwave_top_geom_z_m: 1.107
+    generator_bounds:
+      source_x_m: [-0.18, 0.16]
+      source_y_m: [-0.30, -0.12]
+      reference_x_m: [-0.035, 0.035]
+      reference_y_m: [-0.035, 0.035]
+      minimum_center_separation_m: 0.11
+      source_surfaces:
+        table: {probability: 0.75, x_m: [-0.18, 0.16], y_m: [-0.24, -0.12]}
+        microwave_top: {probability: 0.25, x_m: [-0.03, 0.03], y_m: [-0.30, -0.24]}
+    contrastive_layouts:
+      - {id: t37-l0, source_surface: microwave_top, source_xy_m: [-0.03, -0.30], reference_xy_m: [0.03, 0.03]}
+      - {id: t37-l1, source_surface: table, source_xy_m: [0.16, -0.14], reference_xy_m: [-0.03, 0.03]}
+      - {id: t37-l2, source_surface: microwave_top, source_xy_m: [0.03, -0.24], reference_xy_m: [-0.03, -0.03]}
+      - {id: t37-l3, source_surface: table, source_xy_m: [-0.18, -0.14], reference_xy_m: [0.03, -0.03]}
+      - {id: t37-l4, source_surface: table, source_xy_m: [-0.14, -0.22], reference_xy_m: [-0.02, 0.02]}
+      - {id: t37-l5, source_surface: table, source_xy_m: [0.12, -0.22], reference_xy_m: [0.02, 0.02]}
+
+state_partitions:
+  expert_tuning_init_states: [25]
+  expert_validation_init_states: [26]
+  training_base_init_states: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+  untouched_target_init_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+  targeted_seed: 110351
+  random_seed: 220703
+  generator_validation_seed: 330907
+  random_must_exclude_targeted_state_hashes: true
+  untouched_states_must_never_be_generated_or_debugged: true
+
+selection:
+  targeted: >-
+    Complete matched pairs from each locked layout. One demonstration commands the originally
+    named object and the other counterbalances the object roles and language while preserving the
+    destination structure. For the relational task, source and reference slots swap with the roles.
+  random: >-
+    Seeded independent role and layout samples from the identical generator and task families,
+    filtered by the identical validity checks and prohibited from forming matched counterfactual
+    pairs at the same dose.
+  doses_new_episodes: [8, 24]
+  task_balance: equal
+  targeted_episodes_must_form_complete_pairs: true
+  random_episodes_must_not_form_complete_pairs: true
+  nested_doses: true
+
+expert_acceptance:
+  controller: OSC_POSE
+  control_frequency_hz: 20
+  dataset_fps: 10
+  maximum_steps: 320
+  required_validation_attempts_per_task: 5
+  minimum_validation_success_fraction_per_task: 0.90
+  maximum_final_distractor_translation_m: 0.025
+  minimum_target_translation_m: 0.05
+  minimum_initial_visible_pixels_per_object: 64
+  require_bddl_goal: true
+  require_finite_actions_and_state: true
+  require_synchronized_observer_wrist_and_telemetry: true
+  reject_failed_or_unstable_trajectory: true
+
+replay:
+  source: fixed_official_successful_demonstrations
+  tasks:
+    - {suite: libero_spatial, task_id: 2}
+    - {suite: libero_object, task_id: 5}
+    - {suite: libero_goal, task_id: 8}
+    - {suite: libero_10, task_id: 5}
+  seed: 440711
+  ratio_new_to_replay: [1, 1]
+  same_episode_ids_in_targeted_and_random: true
+  nested_with_dose: true
+
+training:
+  start_checkpoint_matched: true
+  optimizer_steps: 300
+  batch_size: 2
+  warmup_steps: 30
+  peak_learning_rate: 0.00002
+  gradient_clip_norm: 1.0
+  schedule_matched_within_dose: true
+
+evaluation:
+  plan: configs/task_role_boundary_v1/evaluation.jsonl
+  target_trials: 40
+  target_trials_per_task: 20
+  target_repeats_per_state: 2
+  regression_trials: 20
+  paired_across_arms: true
+  wilson_confidence: 0.95
+
+stopping:
+  small_dose:
+    stop_negative_if_targeted_success_not_greater_than_random: true
+    stop_negative_on_any_targeted_regression_loss: true
+    release_medium_if_targeted_beats_random_and_regression_is_clean: true
+  decisive_gate:
+    minimum_targeted_successes: 12
+    minimum_targeted_successes_per_task: 4
+    require_targeted_strictly_beats_random_per_task: true
+    minimum_pooled_targeted_minus_random_successes: 6
+    maximum_paired_exact_p_value: 0.05
+    maximum_targeted_regression_losses_vs_released: 0
+  medium_dose:
+    require_decisive_gate: true
+    report_marginal_gain_from_zero_to_small_and_small_to_medium: true
+    stop_saturated_if_additional_successes_at_most: 2
+  no_post_outcome_rule_changes: true

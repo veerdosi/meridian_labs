@@ -1,0 +1,63 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=00:45:00
+#PBS -N role-expert
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${CONFIG:?absolute path to the locked task-role repair config}"
+: "${PLANS:?absolute path to one materialized expert plan}"
+: "${RUN_ID:?unique expert-generation run ID}"
+: "${PHASE:?development, validation, or training}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+RUN_ROOT="$ROOT/artifacts/task-role-expert/$RUN_ID/$PBS_JOBID"
+WRITE_VIDEOS=${WRITE_VIDEOS:-1}
+mkdir -p "$RUN_ROOT"
+
+module load python/3.8.13
+export LIBERO_CONFIG_PATH="$ROOT/config/libero"
+export PYTHONPATH="$ROOT/harness/src:$ROOT/harness:$ROOT/src/openpi/third_party/libero"
+export PYTHONUNBUFFERED=1
+export MUJOCO_GL=egl
+ALLOCATED_GPU="${CUDA_VISIBLE_DEVICES%%,*}"
+if [[ "$ALLOCATED_GPU" =~ ^[0-9]+$ ]]; then
+  EGL_DEVICE_INDEX="$ALLOCATED_GPU"
+else
+  EGL_DEVICE_INDEX=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader \
+    | awk -F ', ' -v uuid="$ALLOCATED_GPU" '$2 == uuid { print $1; exit }')
+fi
+: "${EGL_DEVICE_INDEX:?could not map allocated GPU $ALLOCATED_GPU to EGL index}"
+export CUDA_VISIBLE_DEVICES="$EGL_DEVICE_INDEX"
+export MUJOCO_EGL_DEVICE_ID="$EGL_DEVICE_INDEX"
+
+VIDEO_FLAG=()
+if [ "$WRITE_VIDEOS" = 1 ]; then VIDEO_FLAG=(--write-videos); fi
+started=$(date +%s)
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/libero_task_role_expert.py" \
+  --config "$CONFIG" \
+  --plans "$PLANS" \
+  --project-root "$ROOT/harness" \
+  --output "$RUN_ROOT/generation" \
+  "${VIDEO_FLAG[@]}" \
+  > >(tee "$RUN_ROOT/generation.log") 2>&1
+generated=$(date +%s)
+"$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/verify_task_role_expert.py" \
+  --config "$CONFIG" \
+  --plans "$PLANS" \
+  --results "$RUN_ROOT/generation/episodes.jsonl" \
+  --phase "$PHASE" \
+  --output "$RUN_ROOT/verification.json" \
+  > >(tee "$RUN_ROOT/verification.log") 2>&1
+verified=$(date +%s)
+
+printf '{"generation_seconds":%d,"verification_seconds":%d}\n' \
+  "$((generated-started))" "$((verified-generated))" > "$RUN_ROOT/phase-times.json"
+printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\n' \
+  "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" > "$RUN_ROOT/inputs.txt"
+sha256sum "$CONFIG" "$PLANS" > "$RUN_ROOT/input-sha256.txt"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 \
+  | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
