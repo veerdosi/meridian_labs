@@ -1,0 +1,38 @@
+{
+  "schema": "task-role-baseline-reuse-v1",
+  "decision": "reuse_completed_released_checkpoint_baseline",
+  "reason": "The prior completed baseline is the same released checkpoint on the exact final ordered evaluation plan, so rerunning it would add compute without adding a comparison condition.",
+  "baseline_results": {
+    "path": "artifacts/task-role-v1/dose4/raw/baseline/rollouts.jsonl",
+    "sha256": "328a08ff5d3e661ac1b52e29bd463f9a7e4222d2fec826509e1a90367ad01eb5",
+    "checkpoint": "gs://openpi-assets/checkpoints/pi05_libero",
+    "target_successes": 0,
+    "target_trials": 40,
+    "regression_successes": 20,
+    "regression_trials": 20
+  },
+  "final_evaluation_plan": {
+    "path": "configs/task_role_boundary_v1/evaluation.jsonl",
+    "sha256": "7670b07ca3582d42d58db58a583991abb4f5bca1300d18acc8ac0d1fd9fa7f65",
+    "records": 60
+  },
+  "equivalence_audit": {
+    "ordered_trial_ids_equal": true,
+    "task_suites_equal": true,
+    "task_ids_equal": true,
+    "initial_state_indices_equal": true,
+    "repeat_indices_equal": true,
+    "seeds_equal": true,
+    "replan_steps_equal": true,
+    "wait_steps_equal": true,
+    "maximum_steps_equal": true,
+    "mismatched_records": 0
+  },
+  "redundant_pbs_allocation": {
+    "job_id": "15256157",
+    "state_before_cancellation": "Q",
+    "runtime_seconds": 0,
+    "actual_su": 0,
+    "cancelled_before_start": true
+  }
+}
