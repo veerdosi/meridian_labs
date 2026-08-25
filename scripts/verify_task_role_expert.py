@@ -61,6 +61,11 @@ def main() -> None:
             lengths = {len(value) for value in arrays.values()}
             if len(lengths) != 1 or next(iter(lengths), 0) == 0:
                 raise ValueError(f"unaligned or empty expert trace: {trace}")
+            recorded_steps = next(iter(lengths))
+            if recorded_steps < int(config["expert_acceptance"]["minimum_recorded_steps"]):
+                raise ValueError(f"expert trace is shorter than the locked minimum: {trace}")
+            if int(record.get("steps", -1)) != recorded_steps:
+                raise ValueError(f"expert record/trace step count mismatch: {trace}")
             if arrays["state"].shape[1:] != (8,) or arrays["actions"].shape[1:] != (7,):
                 raise ValueError(f"invalid policy tensors: {trace}")
             if any(arrays[key].shape[1:] != (128, 128, 3) for key in (
