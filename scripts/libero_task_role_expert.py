@@ -89,6 +89,13 @@ def set_object_pose(env: Any, joint: str, name: str, placement: dict, profile: d
     if qpos.shape != (7,):
         raise ValueError(f"{joint} is not a free joint")
     qpos[:3] += desired_geom - current_geom
+    quaternion = np.asarray(profile["initial_quaternion_wxyz"], dtype=np.float64)
+    if quaternion.shape != (4,) or not np.isfinite(quaternion).all():
+        raise ValueError(f"{name} has an invalid locked initial quaternion")
+    norm = float(np.linalg.norm(quaternion))
+    if not np.isclose(norm, 1.0, atol=1e-6):
+        raise ValueError(f"{name} initial quaternion is not normalized: {norm}")
+    qpos[3:7] = quaternion
     env.sim.data.set_joint_qpos(joint, qpos)
     joint_id = env.sim.model.joint_name2id(joint)
     dof_address = int(env.sim.model.jnt_dofadr[joint_id])
@@ -255,11 +262,14 @@ def hold(
     gripper: float,
     stage: str,
     steps: int,
+    stop_on_goal: bool = False,
 ) -> tuple[dict, bool]:
     goal = False
     for _ in range(steps):
         action, _, _ = osc_action(obs, position, axis_angle, gripper)
         obs, goal = recorder.step(obs, action, stage)
+        if stop_on_goal and goal:
+            break
     return obs, goal
 
 
@@ -474,7 +484,9 @@ def run_plan(
                     >= float(config["expert_acceptance"]["minimum_target_translation_m"])
                 )
             failure = None if reached else "failed_to_reach_place"
-        if reached:
+        terminate_on_goal = bool(config["expert_acceptance"].get("terminate_on_first_goal"))
+        goal_reached = bool(_goal) if reached else False
+        if reached and not (terminate_on_goal and goal_reached):
             if recorder.attachment is not None and bool(
                 profile.get("open_before_detach", False)
             ):
@@ -485,8 +497,45 @@ def run_plan(
                     transport_axis_angle,
                     -1.0,
                     "release_assisted_open",
-                    10,
+                    int(profile.get("open_before_detach_steps", 10)),
+                    stop_on_goal=terminate_on_goal,
                 )
+                goal_reached = goal_reached or bool(_goal)
+                if not (terminate_on_goal and goal_reached):
+                    recorder.deactivate_kinematic_attachment()
+                if not (terminate_on_goal and goal_reached) and bool(
+                    profile.get("retreat_immediately_after_detach", False)
+                ):
+                    release_retreat = np.asarray(
+                        profile.get("release_retreat_offset_world_m", [0.0, 0.0, 0.10]),
+                        dtype=np.float64,
+                    )
+                    obs, _goal, _ = move_to(
+                        recorder,
+                        obs,
+                        place + release_retreat,
+                        transport_axis_angle,
+                        -1.0,
+                        "release_unassisted_retreat",
+                        20,
+                        transport_tolerance,
+                        rotation_tolerance,
+                        accept_goal=True,
+                    )
+                    goal_reached = goal_reached or bool(_goal)
+                elif not (terminate_on_goal and goal_reached):
+                    obs, _goal = hold(
+                        recorder,
+                        obs,
+                        place,
+                        transport_axis_angle,
+                        -1.0,
+                        "release_unassisted",
+                        10,
+                        stop_on_goal=terminate_on_goal,
+                    )
+                    goal_reached = goal_reached or bool(_goal)
+            else:
                 recorder.deactivate_kinematic_attachment()
                 obs, _goal = hold(
                     recorder,
@@ -494,14 +543,12 @@ def run_plan(
                     place,
                     transport_axis_angle,
                     -1.0,
-                    "release_unassisted",
-                    10,
+                    "release",
+                    int(profile.get("release_steps", 20)),
+                    stop_on_goal=terminate_on_goal,
                 )
-            else:
-                recorder.deactivate_kinematic_attachment()
-                obs, _goal = hold(
-                    recorder, obs, place, transport_axis_angle, -1.0, "release", 20
-                )
+                goal_reached = goal_reached or bool(_goal)
+        if reached and not (terminate_on_goal and goal_reached):
             obs, _goal, reached = move_to(
                 recorder,
                 obs,
@@ -514,8 +561,9 @@ def run_plan(
                 rotation_tolerance,
                 accept_goal=True,
             )
+            goal_reached = goal_reached or bool(_goal)
             failure = None if reached else "failed_to_reach_retreat"
-        if reached:
+        if reached and not (terminate_on_goal and goal_reached):
             obs, _goal = hold(
                 recorder,
                 obs,
@@ -524,6 +572,7 @@ def run_plan(
                 -1.0,
                 "settle",
                 20,
+                stop_on_goal=terminate_on_goal,
             )
 
         trace = episode_dir / "trajectory.npz"

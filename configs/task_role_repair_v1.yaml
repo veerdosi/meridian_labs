@@ -1,6 +1,6 @@
 schema: task-role-repair-v1
 status: relocked_after_failed_generator_validation_before_training_or_policy_outcomes
-locked_at_utc: "2026-08-25T06:38:17Z"
+locked_at_utc: "2026-08-25T07:11:57Z"
 scientific_question: >-
   Does a diagnosed object-role failure identify simulator demonstrations that repair two
   previously unsolved tasks more efficiently than equal-dose random demonstrations from the
@@ -34,19 +34,24 @@ tasks:
         goal_predicate: ["on", moka_pot_1, flat_stove_1_cook_region]
     expert_profiles:
       chefmate_8_frypan_1:
+        initial_quaternion_wxyz: [0.7071067811865475, 0.0, 0.0, 0.7071067811865476]
         grasp_offset_world_m: [0.0, 0.143, 0.016]
         grasp_axis_angle_rad: [2.356, 2.056, 0.116]
         place_offset_world_m: [0.0, 0.130, 0.060]
         close_steps: 18
+        release_steps: 5
+        allow_release_after_bounded_place_if_over_destination: true
+        maximum_object_destination_xy_distance_m: 0.150
         table_geom_z_m: 0.899
       moka_pot_1:
+        initial_quaternion_wxyz: [0.0, 0.0, 0.0, 1.0]
         grasp_offset_world_m: [0.0, 0.060, 0.035]
         grasp_axis_angle_rad: [2.22144, 2.22144, 0.0]
         transport_axis_angle_rad: [3.142, 0.0, 0.0]
         use_axis_aligned_transport_waypoint: true
         # Reachable point inside the empirically verified cook-region support basin,
         # plus the measured object-to-gripper translation at bilateral contact.
-        place_offset_world_m: [0.060, 0.060, 0.115]
+        place_offset_world_m: [0.040, 0.060, 0.090]
         pregrasp_height_m: 0.100
         close_steps: 35
         position_tolerance_m: 0.025
@@ -55,6 +60,8 @@ tasks:
         require_bilateral_contact_before_grasp_assist: true
         kinematic_grasp_assist: true
         open_before_detach: true
+        open_before_detach_steps: 1
+        retreat_immediately_after_detach: true
         allow_best_effort_preplace_if_object_remains_lifted: true
         allow_release_after_bounded_place_if_over_destination: true
         maximum_object_destination_xy_distance_m: 0.100
@@ -64,7 +71,7 @@ tasks:
       chefmate_8_frypan_1_y_m: [-0.30, -0.18]
       moka_pot_1_x_m: [-0.16, 0.14]
       moka_pot_1_y_m: [-0.02, 0.09]
-      minimum_center_separation_m: 0.24
+      minimum_center_separation_m: 0.30
     contrastive_layouts:
       - {id: t18-l0, chefmate_8_frypan_1_xy_m: [-0.18, -0.30], moka_pot_1_xy_m: [0.12, 0.08]}
       - {id: t18-l1, chefmate_8_frypan_1_xy_m: [0.14, -0.30], moka_pot_1_xy_m: [-0.16, 0.08]}
@@ -95,6 +102,7 @@ tasks:
         goal_predicate: ["on", plate_1, kitchen_table_plate_right_region]
     expert_profiles:
       white_bowl_1:
+        initial_quaternion_wxyz: [0.7071067811865475, 0.0, 0.0, 0.7071067811865476]
         grasp_offset_world_m: [-0.018, 0.044, 0.015]
         grasp_axis_angle_rad: [3.162, 0.099, 0.037]
         place_offset_world_m: [-0.010, 0.030, 0.053]
@@ -102,6 +110,7 @@ tasks:
         table_geom_z_m: 0.902
         microwave_top_geom_z_m: 1.107
       plate_1:
+        initial_quaternion_wxyz: [0.7071067811865475, 0.0, 0.0, 0.7071067811865476]
         grasp_offset_world_m: [0.0, 0.045, 0.012]
         grasp_axis_angle_rad: [3.142, 0.0, 0.0]
         place_offset_world_m: [0.0, 0.080, 0.045]
@@ -111,30 +120,30 @@ tasks:
         table_geom_z_m: 0.902
         microwave_top_geom_z_m: 1.107
     generator_bounds:
-      source_x_m: [-0.03, 0.03]
-      source_y_m: [-0.30, -0.24]
+      source_x_m: [-0.015, 0.015]
+      source_y_m: [-0.29, -0.25]
       reference_x_m: [-0.035, 0.035]
       reference_y_m: [-0.035, 0.0]
       minimum_center_separation_m: 0.11
       source_surfaces:
         table: {probability: 0.0, x_m: [-0.18, 0.16], y_m: [-0.24, -0.12]}
-        microwave_top: {probability: 1.0, x_m: [-0.03, 0.03], y_m: [-0.30, -0.24]}
+        microwave_top: {probability: 1.0, x_m: [-0.015, 0.015], y_m: [-0.29, -0.25]}
     contrastive_layouts:
-      - {id: t37-l0, source_surface: microwave_top, source_xy_m: [-0.03, -0.30], reference_xy_m: [0.03, 0.0]}
-      - {id: t37-l1, source_surface: microwave_top, source_xy_m: [0.03, -0.30], reference_xy_m: [-0.03, 0.0]}
-      - {id: t37-l2, source_surface: microwave_top, source_xy_m: [0.03, -0.24], reference_xy_m: [-0.03, -0.03]}
-      - {id: t37-l3, source_surface: microwave_top, source_xy_m: [-0.03, -0.24], reference_xy_m: [0.03, -0.03]}
-      - {id: t37-l4, source_surface: microwave_top, source_xy_m: [0.00, -0.30], reference_xy_m: [-0.02, -0.015]}
-      - {id: t37-l5, source_surface: microwave_top, source_xy_m: [0.00, -0.24], reference_xy_m: [0.02, -0.015]}
+      - {id: t37-l0, source_surface: microwave_top, source_xy_m: [-0.015, -0.29], reference_xy_m: [0.03, 0.0]}
+      - {id: t37-l1, source_surface: microwave_top, source_xy_m: [0.015, -0.29], reference_xy_m: [-0.03, 0.0]}
+      - {id: t37-l2, source_surface: microwave_top, source_xy_m: [0.015, -0.25], reference_xy_m: [-0.03, -0.03]}
+      - {id: t37-l3, source_surface: microwave_top, source_xy_m: [-0.015, -0.25], reference_xy_m: [0.03, -0.03]}
+      - {id: t37-l4, source_surface: microwave_top, source_xy_m: [0.00, -0.29], reference_xy_m: [-0.02, -0.015]}
+      - {id: t37-l5, source_surface: microwave_top, source_xy_m: [0.00, -0.25], reference_xy_m: [0.02, -0.015]}
 
 state_partitions:
   expert_tuning_init_states: [25]
   expert_validation_init_states: [26]
-  training_base_init_states: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+  training_base_init_states: [27]
   untouched_target_init_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
   targeted_seed: 110351
   random_seed: 220703
-  generator_validation_seed: 330910
+  generator_validation_seed: 330912
   random_must_exclude_targeted_state_hashes: true
   untouched_states_must_never_be_generated_or_debugged: true
 
@@ -168,6 +177,7 @@ expert_acceptance:
   require_finite_actions_and_state: true
   require_synchronized_observer_wrist_and_telemetry: true
   reject_failed_or_unstable_trajectory: true
+  terminate_on_first_goal: true
 
 replay:
   source: fixed_official_successful_demonstrations

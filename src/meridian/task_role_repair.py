@@ -39,6 +39,12 @@ def validate_repair_config(config: Mapping[str, Any], root: Path | None = None) 
             str(variant["commanded_object"]) for variant in variants
         }:
             raise ValueError(f"task {task.get('task_id')} lacks an expert profile for each role")
+        for name, profile in task["expert_profiles"].items():
+            quaternion = list(profile.get("initial_quaternion_wxyz", []))
+            if len(quaternion) != 4 or not math.isclose(
+                sum(float(value) ** 2 for value in quaternion), 1.0, abs_tol=1e-6
+            ):
+                raise ValueError(f"task {task.get('task_id')} has invalid quaternion for {name}")
         for variant in variants:
             goal = list(variant.get("goal_predicate", []))
             if len(goal) != 3 or goal[0].lower() != "on":
