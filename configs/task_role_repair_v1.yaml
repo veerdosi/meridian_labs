@@ -1,6 +1,6 @@
 schema: task-role-repair-v1
-status: locked_before_expert_or_policy_outcomes
-locked_at_utc: "2026-08-25T04:17:35Z"
+status: locked_after_expert_development_before_validation_or_policy_outcomes
+locked_at_utc: "2026-08-25T05:43:48Z"
 scientific_question: >-
   Does a diagnosed object-role failure identify simulator demonstrations that repair two
   previously unsolved tasks more efficiently than equal-dose random demonstrations from the
@@ -37,11 +37,27 @@ tasks:
         grasp_offset_world_m: [0.0, 0.143, 0.016]
         grasp_axis_angle_rad: [2.356, 2.056, 0.116]
         place_offset_world_m: [0.0, 0.130, 0.060]
+        close_steps: 18
         table_geom_z_m: 0.899
       moka_pot_1:
-        grasp_offset_world_m: [0.0, 0.0, 0.020]
-        grasp_axis_angle_rad: [3.142, 0.0, 0.0]
-        place_offset_world_m: [0.0, 0.0, 0.060]
+        grasp_offset_world_m: [0.0, 0.060, 0.035]
+        grasp_axis_angle_rad: [2.22144, 2.22144, 0.0]
+        transport_axis_angle_rad: [3.142, 0.0, 0.0]
+        use_axis_aligned_transport_waypoint: true
+        # Reachable point inside the empirically verified cook-region support basin,
+        # plus the measured object-to-gripper translation at bilateral contact.
+        place_offset_world_m: [0.060, 0.060, 0.115]
+        pregrasp_height_m: 0.100
+        close_steps: 35
+        position_tolerance_m: 0.025
+        transport_position_tolerance_m: 0.080
+        rotation_tolerance_rad: 0.500
+        require_bilateral_contact_before_grasp_assist: true
+        kinematic_grasp_assist: true
+        open_before_detach: true
+        allow_best_effort_preplace_if_object_remains_lifted: true
+        allow_release_after_bounded_place_if_over_destination: true
+        maximum_object_destination_xy_distance_m: 0.100
         table_geom_z_m: 0.966
     generator_bounds:
       chefmate_8_frypan_1_x_m: [-0.18, 0.14]
@@ -50,7 +66,7 @@ tasks:
       moka_pot_1_y_m: [-0.09, 0.10]
       minimum_center_separation_m: 0.24
     contrastive_layouts:
-      - {id: t18-l0, chefmate_8_frypan_1_xy_m: [-0.18, -0.30], moka_pot_1_xy_m: [0.16, 0.08]}
+      - {id: t18-l0, chefmate_8_frypan_1_xy_m: [-0.18, -0.30], moka_pot_1_xy_m: [0.12, 0.08]}
       - {id: t18-l1, chefmate_8_frypan_1_xy_m: [0.14, -0.30], moka_pot_1_xy_m: [-0.16, 0.08]}
       - {id: t18-l2, chefmate_8_frypan_1_xy_m: [-0.18, -0.18], moka_pot_1_xy_m: [0.12, 0.09]}
       - {id: t18-l3, chefmate_8_frypan_1_xy_m: [0.14, -0.18], moka_pot_1_xy_m: [-0.14, 0.09]}
@@ -82,12 +98,16 @@ tasks:
         grasp_offset_world_m: [-0.018, 0.044, 0.015]
         grasp_axis_angle_rad: [3.162, 0.099, 0.037]
         place_offset_world_m: [-0.010, 0.030, 0.053]
+        close_steps: 18
         table_geom_z_m: 0.902
         microwave_top_geom_z_m: 1.107
       plate_1:
-        grasp_offset_world_m: [0.0, 0.040, 0.015]
+        grasp_offset_world_m: [0.0, 0.045, 0.012]
         grasp_axis_angle_rad: [3.142, 0.0, 0.0]
         place_offset_world_m: [0.0, 0.030, 0.045]
+        close_steps: 35
+        require_bilateral_contact_before_grasp_assist: true
+        kinematic_grasp_assist: true
         table_geom_z_m: 0.902
         microwave_top_geom_z_m: 1.107
     generator_bounds:

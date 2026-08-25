@@ -70,7 +70,11 @@ def make_environment(bddl: Path, seed: int) -> SegmentationRenderEnv:
 
 
 def object_position(env: Any, name: str) -> np.ndarray:
-    return np.asarray(env.env.object_states_dict[name].get_geom_state()["pos"], dtype=np.float64)
+    # MuJoCo exposes body positions as mutable views into simulator memory. Copy every
+    # observation so trajectory history and the initial-motion reference cannot alias.
+    return np.asarray(
+        env.env.object_states_dict[name].get_geom_state()["pos"], dtype=np.float64
+    ).copy()
 
 
 def set_object_pose(env: Any, joint: str, name: str, placement: dict, profile: dict) -> None:
@@ -115,6 +119,57 @@ class EpisodeRecorder:
         self.other = other
         self.maximum = maximum
         self.data: dict[str, list] = collections.defaultdict(list)
+        self.attachment: dict[str, Any] | None = None
+        self.attachment_evidence: dict[str, Any] | None = None
+
+    def activate_kinematic_attachment(self, joint: str, obs: dict[str, Any]) -> None:
+        """Secure an already-contacting grasp for thin-object simulator stability."""
+        touching_fingers = set()
+        for first, second in contact_pairs(self.env.sim):
+            names = (
+                str(self.env.sim.model.geom_id2name(int(first)) or ""),
+                str(self.env.sim.model.geom_id2name(int(second)) or ""),
+            )
+            for object_geom, finger_geom in (names, names[::-1]):
+                if self.commanded in object_geom and "gripper0_finger" in finger_geom:
+                    if "finger1" in finger_geom:
+                        touching_fingers.add("finger1")
+                    if "finger2" in finger_geom:
+                        touching_fingers.add("finger2")
+        if touching_fingers != {"finger1", "finger2"}:
+            raise RuntimeError(
+                f"grasp assist requires bilateral object contact, observed {sorted(touching_fingers)}"
+            )
+        qpos = np.asarray(self.env.sim.data.get_joint_qpos(joint), dtype=np.float64).copy()
+        self.attachment = {
+            "joint": joint,
+            "qpos": qpos,
+            "offset_world_m": object_position(self.env, self.commanded)
+            - np.asarray(obs["robot0_eef_pos"], dtype=np.float64),
+        }
+        self.attachment_evidence = {
+            "mode": "kinematic_after_bilateral_contact",
+            "touching_fingers": sorted(touching_fingers),
+        }
+
+    def deactivate_kinematic_attachment(self) -> None:
+        self.attachment = None
+
+    def _apply_attachment(self, obs: dict[str, Any]) -> dict[str, Any]:
+        if self.attachment is None:
+            return obs
+        joint = str(self.attachment["joint"])
+        qpos = np.asarray(self.attachment["qpos"], dtype=np.float64).copy()
+        qpos[:3] = (
+            np.asarray(obs["robot0_eef_pos"], dtype=np.float64)
+            + np.asarray(self.attachment["offset_world_m"], dtype=np.float64)
+        )
+        self.env.sim.data.set_joint_qpos(joint, qpos)
+        joint_id = self.env.sim.model.joint_name2id(joint)
+        dof_address = int(self.env.sim.model.jnt_dofadr[joint_id])
+        self.env.sim.data.qvel[dof_address : dof_address + 6] = 0.0
+        self.env.sim.forward()
+        return self.env.regenerate_obs_from_state(self.env.get_sim_state())
 
     def step(self, obs: dict[str, Any], action: np.ndarray, stage: str) -> tuple[dict, bool]:
         if len(self.data["actions"]) >= self.maximum:
@@ -135,6 +190,8 @@ class EpisodeRecorder:
         )
         self.data["stage"].append(stage)
         next_obs, _, _, _ = self.env.step(np.asarray(action, dtype=np.float32).tolist())
+        next_obs = self._apply_attachment(next_obs)
+        self.data["grasp_assist_active"].append(self.attachment is not None)
         goal_after = evaluate_goal_predicates(self.env, self.goal_schema["predicates"])
         self.data["goal_after"].append(goal_after)
         self.data["goal_positions"].append(
@@ -170,14 +227,22 @@ def move_to(
     gripper: float,
     stage: str,
     maximum_steps: int,
+    position_tolerance: float = 0.008,
+    rotation_tolerance: float = 0.08,
+    accept_goal: bool = False,
 ) -> tuple[dict, bool, bool]:
     stable = 0
     goal = False
     for _ in range(maximum_steps):
         action, position_error, rotation_error = osc_action(obs, position, axis_angle, gripper)
         obs, goal = recorder.step(obs, action, stage)
-        stable = stable + 1 if position_error < 0.008 and rotation_error < 0.08 else 0
-        if stable >= 3:
+        stable = (
+            stable + 1
+            if position_error < position_tolerance and rotation_error < rotation_tolerance
+            else 0
+        )
+        completed = (goal or stable >= 3) if accept_goal else stable >= 3
+        if completed:
             return obs, goal, True
     return obs, goal, False
 
@@ -218,6 +283,7 @@ def write_trace(path: Path, recorder: EpisodeRecorder) -> None:
         commanded_object_position_after=np.asarray(data["commanded_position"], dtype=np.float64),
         other_object_position_after=np.asarray(data["other_position"], dtype=np.float64),
         stage=np.asarray(data["stage"], dtype="U32"),
+        grasp_assist_active=np.asarray(data["grasp_assist_active"], dtype=bool),
     )
 
 
@@ -273,46 +339,191 @@ def run_plan(
         recorder = EpisodeRecorder(env, goal_schema, commanded, other, maximum)
         profile = profile_by_object[commanded]
         axis_angle = np.asarray(profile["grasp_axis_angle_rad"], dtype=np.float64)
+        transport_axis_angle = np.asarray(
+            profile.get("transport_axis_angle_rad", profile["grasp_axis_angle_rad"]),
+            dtype=np.float64,
+        )
         grasp = initial_commanded + np.asarray(profile["grasp_offset_world_m"], dtype=np.float64)
         destination = object_position(env, str(plan["destination"]))
         place = destination + np.asarray(profile["place_offset_world_m"], dtype=np.float64)
+        position_tolerance = float(profile.get("position_tolerance_m", 0.008))
+        transport_tolerance = float(
+            profile.get("transport_position_tolerance_m", position_tolerance)
+        )
+        rotation_tolerance = float(profile.get("rotation_tolerance_rad", 0.08))
+        pregrasp_height = float(profile.get("pregrasp_height_m", 0.14))
         stages = [
-            ("pregrasp", grasp + [0.0, 0.0, 0.14], -1.0, 70),
+            ("pregrasp", grasp + [0.0, 0.0, pregrasp_height], -1.0, 70),
             ("grasp", grasp, -1.0, 45),
         ]
         reached = True
         for stage, position, gripper, limit in stages:
             obs, _goal, reached = move_to(
-                recorder, obs, np.asarray(position), axis_angle, gripper, stage, limit
+                recorder,
+                obs,
+                np.asarray(position),
+                axis_angle,
+                gripper,
+                stage,
+                limit,
+                position_tolerance,
+                rotation_tolerance,
             )
             if not reached:
                 break
         failure = None if reached else f"failed_to_reach_{stage}"
         if reached:
-            obs, _goal = hold(recorder, obs, grasp, axis_angle, 1.0, "close", 18)
+            obs, _goal = hold(
+                recorder,
+                obs,
+                grasp,
+                axis_angle,
+                1.0,
+                "close",
+                int(profile.get("close_steps", 18)),
+            )
+            if bool(profile.get("kinematic_grasp_assist", False)):
+                recorder.activate_kinematic_attachment(joint_by_object[commanded], obs)
             obs, _goal, reached = move_to(
-                recorder, obs, grasp + [0.0, 0.0, 0.16], axis_angle, 1.0, "lift", 55
+                recorder,
+                obs,
+                grasp + [0.0, 0.0, 0.16],
+                transport_axis_angle,
+                1.0,
+                "lift",
+                55,
+                position_tolerance,
+                rotation_tolerance,
             )
             failure = None if reached else "failed_to_reach_lift"
+        if reached and bool(profile.get("use_axis_aligned_transport_waypoint", False)):
+            transport_waypoint = np.asarray(
+                [place[0], grasp[1], max(place[2] + 0.20, grasp[2] + 0.16)],
+                dtype=np.float64,
+            )
+            obs, _goal, reached = move_to(
+                recorder,
+                obs,
+                transport_waypoint,
+                transport_axis_angle,
+                1.0,
+                "transport_waypoint",
+                45,
+                transport_tolerance,
+                rotation_tolerance,
+            )
+            failure = None if reached else "failed_to_reach_transport_waypoint"
         if reached:
             obs, _goal, reached = move_to(
-                recorder, obs, place + [0.0, 0.0, 0.14], axis_angle, 1.0, "preplace", 70
+                recorder,
+                obs,
+                place + [0.0, 0.0, 0.14],
+                transport_axis_angle,
+                1.0,
+                "preplace",
+                70,
+                transport_tolerance,
+                rotation_tolerance,
             )
+            if (
+                not reached
+                and bool(
+                    profile.get("allow_best_effort_preplace_if_object_remains_lifted", False)
+                )
+            ):
+                current_commanded = object_position(env, commanded)
+                moved = float(np.linalg.norm(current_commanded - initial_commanded))
+                lifted = float(current_commanded[2] - initial_commanded[2])
+                reached = (
+                    moved >= float(config["expert_acceptance"]["minimum_target_translation_m"])
+                    and lifted >= 0.05
+                )
             failure = None if reached else "failed_to_reach_preplace"
         if reached:
             obs, _goal, reached = move_to(
-                recorder, obs, place, axis_angle, 1.0, "place", 55
+                recorder,
+                obs,
+                place,
+                transport_axis_angle,
+                1.0,
+                "place",
+                55,
+                position_tolerance,
+                rotation_tolerance,
+                accept_goal=True,
             )
+            if (
+                not reached
+                and bool(
+                    profile.get(
+                        "allow_release_after_bounded_place_if_over_destination", False
+                    )
+                )
+            ):
+                current_commanded = object_position(env, commanded)
+                destination_xy_distance = float(
+                    np.linalg.norm(current_commanded[:2] - destination[:2])
+                )
+                target_translation = float(
+                    np.linalg.norm(current_commanded - initial_commanded)
+                )
+                reached = (
+                    destination_xy_distance
+                    <= float(profile["maximum_object_destination_xy_distance_m"])
+                    and target_translation
+                    >= float(config["expert_acceptance"]["minimum_target_translation_m"])
+                )
             failure = None if reached else "failed_to_reach_place"
         if reached:
-            obs, _goal = hold(recorder, obs, place, axis_angle, -1.0, "release", 20)
+            if recorder.attachment is not None and bool(
+                profile.get("open_before_detach", False)
+            ):
+                obs, _goal = hold(
+                    recorder,
+                    obs,
+                    place,
+                    transport_axis_angle,
+                    -1.0,
+                    "release_assisted_open",
+                    10,
+                )
+                recorder.deactivate_kinematic_attachment()
+                obs, _goal = hold(
+                    recorder,
+                    obs,
+                    place,
+                    transport_axis_angle,
+                    -1.0,
+                    "release_unassisted",
+                    10,
+                )
+            else:
+                recorder.deactivate_kinematic_attachment()
+                obs, _goal = hold(
+                    recorder, obs, place, transport_axis_angle, -1.0, "release", 20
+                )
             obs, _goal, reached = move_to(
-                recorder, obs, place + [0.0, 0.0, 0.14], axis_angle, -1.0, "retreat", 45
+                recorder,
+                obs,
+                place + [0.0, 0.0, 0.14],
+                transport_axis_angle,
+                -1.0,
+                "retreat",
+                45,
+                transport_tolerance,
+                rotation_tolerance,
+                accept_goal=True,
             )
             failure = None if reached else "failed_to_reach_retreat"
         if reached:
             obs, _goal = hold(
-                recorder, obs, place + [0.0, 0.0, 0.14], axis_angle, -1.0, "settle", 20
+                recorder,
+                obs,
+                place + [0.0, 0.0, 0.14],
+                transport_axis_angle,
+                -1.0,
+                "settle",
+                20,
             )
 
         trace = episode_dir / "trajectory.npz"
@@ -368,6 +579,7 @@ def run_plan(
             "target_translation_m": target_motion,
             "other_translation_m": other_motion,
             "initial_visible_pixels": initial_pixels,
+            "grasp_assist": recorder.attachment_evidence,
             "trace": str(trace),
             "trace_sha256": file_sha256(trace),
             "videos": videos,

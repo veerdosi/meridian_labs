@@ -56,6 +56,7 @@ def main() -> None:
                 "commanded_object_position_after",
                 "other_object_position_after",
                 "stage",
+                "grasp_assist_active",
             )
             arrays = {key: np.asarray(trajectory[key]) for key in keys}
             lengths = {len(value) for value in arrays.values()}
@@ -66,6 +67,14 @@ def main() -> None:
                 raise ValueError(f"expert trace is shorter than the locked minimum: {trace}")
             if int(record.get("steps", -1)) != recorded_steps:
                 raise ValueError(f"expert record/trace step count mismatch: {trace}")
+            assisted = record.get("grasp_assist") is not None
+            if assisted != bool(np.any(arrays["grasp_assist_active"])):
+                raise ValueError(f"grasp-assist record/trace mismatch: {trace}")
+            if assisted and record["grasp_assist"].get("touching_fingers") != [
+                "finger1",
+                "finger2",
+            ]:
+                raise ValueError(f"grasp assist lacks bilateral-contact evidence: {trace}")
             if arrays["state"].shape[1:] != (8,) or arrays["actions"].shape[1:] != (7,):
                 raise ValueError(f"invalid policy tensors: {trace}")
             if any(arrays[key].shape[1:] != (128, 128, 3) for key in (
