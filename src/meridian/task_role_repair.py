@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import random
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -181,12 +182,12 @@ def build_targeted_plans(config: Mapping[str, Any], dose: int) -> list[dict[str,
     return plans
 
 
-def _uniform(rng: np.random.Generator, bounds: Sequence[float]) -> float:
+def _uniform(rng: random.Random, bounds: Sequence[float]) -> float:
     return float(rng.uniform(float(bounds[0]), float(bounds[1])))
 
 
 def _sample_random_layout(
-    rng: np.random.Generator, task: Mapping[str, Any], identifier: str
+    rng: random.Random, task: Mapping[str, Any], identifier: str
 ) -> dict[str, Any]:
     bounds = task["generator_bounds"]
     minimum = float(bounds["minimum_center_separation_m"])
@@ -238,7 +239,7 @@ def build_random_plans(config: Mapping[str, Any], dose: int) -> list[dict[str, A
     maximum_per_task = maximum_dose // len(tasks)
     requested_per_task = dose // len(tasks)
     init_states = list(map(int, config["state_partitions"]["training_base_init_states"]))
-    rng = np.random.default_rng(int(config["state_partitions"]["random_seed"]))
+    rng = random.Random(int(config["state_partitions"]["random_seed"]))
     by_task: dict[int, list[dict[str, Any]]] = {}
     targeted_hashes = {
         item["state_spec_sha256"] for item in build_targeted_plans(config, maximum_dose)
@@ -302,7 +303,7 @@ def build_expert_validation_plans(config: Mapping[str, Any]) -> list[dict[str, A
     validate_repair_config(config)
     attempts = int(config["expert_acceptance"]["required_validation_attempts_per_task"])
     init_states = list(map(int, config["state_partitions"]["expert_validation_init_states"]))
-    rng = np.random.default_rng(int(config["state_partitions"]["generator_validation_seed"]))
+    rng = random.Random(int(config["state_partitions"]["generator_validation_seed"]))
     plans = []
     for task_offset, task in enumerate(config["tasks"]):
         for index in range(attempts):
@@ -329,13 +330,15 @@ def select_replay_episodes(
     if not sources or dose <= 0 or dose % len(sources):
         raise ValueError("replay dose must be positive and balanced across registered sources")
     per_source = dose // len(sources)
-    rng = np.random.default_rng(seed)
+    rng = random.Random(seed)
     selected_by_source = []
     for source in sources:
         available = int(source.get("available_episodes", 0))
         if available < per_source:
             raise ValueError(f"replay source has only {available}/{per_source} episodes")
-        indices = rng.permutation(available)[:per_source]
+        indices = list(range(available))
+        rng.shuffle(indices)
+        indices = indices[:per_source]
         selected_by_source.append(
             [
                 {
