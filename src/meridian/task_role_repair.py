@@ -352,6 +352,20 @@ def paired_exact_p_value(wins: int, losses: int) -> float:
     return min(1.0, 2.0 * tail / (2**discordant))
 
 
+def wilson_interval(successes: int, trials: int, z: float = 1.959963984540054) -> list[float]:
+    if trials <= 0 or successes < 0 or successes > trials:
+        raise ValueError("invalid binomial counts")
+    proportion = successes / trials
+    denominator = 1.0 + z**2 / trials
+    center = (proportion + z**2 / (2.0 * trials)) / denominator
+    radius = (
+        z
+        * math.sqrt(proportion * (1.0 - proportion) / trials + z**2 / (4.0 * trials**2))
+        / denominator
+    )
+    return [max(0.0, center - radius), min(1.0, center + radius)]
+
+
 def assess_repair_gate(
     records: Sequence[Mapping[str, Any]], config: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -429,6 +443,9 @@ def assess_repair_gate(
     return {
         "schema": "task-role-repair-gate-v1",
         "successes": success,
+        "wilson_95": {
+            arm: wilson_interval(value, len(target_ids)) for arm, value in success.items()
+        },
         "task_successes": {arm: dict(values) for arm, values in task_success.items()},
         "paired": {"targeted_wins": wins, "targeted_losses": losses, "p_value": p_value},
         "regression_successes": regression_success,

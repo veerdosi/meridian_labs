@@ -11,6 +11,7 @@ from meridian.task_role_repair import (
     paired_exact_p_value,
     select_replay_episodes,
     validate_repair_config,
+    wilson_interval,
 )
 
 
@@ -160,3 +161,12 @@ def test_decisive_gate_requires_paired_margin_both_tasks_and_no_regression() -> 
     assessment = assess_repair_gate(regressed, config())
     assert assessment["checks"]["no_regression"] is False
     assert assessment["decisive_pass"] is False
+
+
+def test_wilson_interval_handles_zero_and_full_success() -> None:
+    zero = wilson_interval(0, 40)
+    full = wilson_interval(40, 40)
+    assert zero[0] == 0.0
+    assert 0.08 < zero[1] < 0.09
+    assert 0.91 < full[0] < 0.92
+    assert full[1] == 1.0
