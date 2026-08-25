@@ -88,6 +88,8 @@ def main() -> None:
             "arm": arm,
             "dose_new": args.dose,
             "dose_replay": len(replay),
+            "frames_per_episode": int(config["training"]["frames_per_episode"]),
+            "frame_sampling": str(config["training"]["frame_sampling"]),
             "config": str(args.config),
             "config_sha256": file_sha256(args.config),
             "replay_registry": str(args.replay_registry),

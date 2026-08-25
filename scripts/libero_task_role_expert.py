@@ -325,6 +325,8 @@ def run_plan(
         acceptance = config["expert_acceptance"]
         checks = {
             "goal": final_goal,
+            "minimum_recorded_steps": len(recorder.data["actions"])
+            >= int(acceptance["minimum_recorded_steps"]),
             "target_motion": target_motion >= float(acceptance["minimum_target_translation_m"]),
             "other_stationary": other_motion
             <= float(acceptance["maximum_final_distractor_translation_m"]),

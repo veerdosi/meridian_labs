@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from meridian.task_role_repair import (
+    aligned_frame_indices,
     assess_repair_gate,
     build_expert_development_plans,
     build_expert_validation_plans,
@@ -28,6 +29,16 @@ def test_locked_config_contains_real_counterfactual_pairs_and_disjoint_holdouts(
         assert variants[0]["other_object"] == variants[1]["commanded_object"]
         assert variants[0]["prompt"] != variants[1]["prompt"]
         assert variants[0]["goal_predicate"][1] != variants[1]["goal_predicate"][1]
+
+
+def test_equal_mass_frame_selection_is_deterministic_aligned_and_exact() -> None:
+    locked = config()
+    count = int(locked["training"]["frames_per_episode"])
+    indices = aligned_frame_indices(173, count)
+    assert len(indices) == count
+    assert len(set(indices.tolist())) == count
+    assert indices.tolist() == aligned_frame_indices(173, count).tolist()
+    assert (indices[0], indices[-1]) == (0, 172)
 
 
 def test_targeted_plans_are_balanced_complete_pairs_and_nested() -> None:

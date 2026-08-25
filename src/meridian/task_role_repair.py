@@ -58,6 +58,21 @@ def validate_repair_config(config: Mapping[str, Any], root: Path | None = None) 
     ]
     if any(left & right for index, left in enumerate(sets) for right in sets[index + 1 :]):
         raise ValueError("expert, training, and untouched initial-state partitions overlap")
+    frames = int(config["training"]["frames_per_episode"])
+    if frames <= 0 or config["training"]["frame_sampling"] != "deterministic_uniform_aligned":
+        raise ValueError("training must lock positive, deterministic aligned frame sampling")
+    if int(config["expert_acceptance"]["minimum_recorded_steps"]) < frames:
+        raise ValueError("accepted expert trajectories must cover the locked training frame count")
+
+
+def aligned_frame_indices(length: int, count: int) -> np.ndarray:
+    """Select a deterministic, endpoint-preserving set of synchronized frame indices."""
+    if count <= 0 or length < count:
+        raise ValueError(f"cannot select {count} frames from trajectory of length {length}")
+    indices = np.linspace(0, length - 1, count, dtype=np.int64)
+    if len(indices) != count or len(np.unique(indices)) != count:
+        raise AssertionError("aligned frame selection did not produce the locked unique count")
+    return indices
 
 
 def _materialize_layout(task: Mapping[str, Any], variant: Mapping[str, Any], layout: Mapping[str, Any]) -> dict:

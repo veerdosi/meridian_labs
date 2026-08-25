@@ -12,6 +12,8 @@ import h5py
 import numpy as np
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
+from meridian.task_role_repair import aligned_frame_indices
+
 
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -91,6 +93,9 @@ def main() -> None:
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text())
     episodes = list(manifest["episodes"])
+    frames_per_episode = int(manifest["frames_per_episode"])
+    if manifest.get("frame_sampling") != "deterministic_uniform_aligned":
+        raise ValueError("manifest does not lock deterministic aligned frame sampling")
     observed_new = sum(item["kind"] == "expert_npz" for item in episodes)
     observed_replay = sum(item["kind"] == "official_hdf5" for item in episodes)
     if (observed_new, observed_replay) != (args.expected_new, args.expected_replay):
@@ -129,7 +134,9 @@ def main() -> None:
         else:
             raise ValueError(f"unknown episode kind: {episode['kind']}")
         validate_arrays(identifier, image, wrist, state, actions)
-        for index in range(len(actions)):
+        raw_frames = len(actions)
+        indices = aligned_frame_indices(raw_frames, frames_per_episode)
+        for index in indices:
             dataset.add_frame(
                 {
                     "image": image[index],
@@ -145,7 +152,10 @@ def main() -> None:
                 "id": identifier,
                 "kind": episode["kind"],
                 "prompt": episode["prompt"],
-                "frames": len(actions),
+                "raw_frames": raw_frames,
+                "frames": len(indices),
+                "first_frame_index": int(indices[0]),
+                "last_frame_index": int(indices[-1]),
             }
         )
     result = {
@@ -155,6 +165,9 @@ def main() -> None:
         "manifest_sha256": file_sha256(args.manifest),
         "new_episodes": observed_new,
         "replay_episodes": observed_replay,
+        "frames_per_episode": frames_per_episode,
+        "frame_sampling": "deterministic_uniform_aligned",
+        "total_frames": len(episodes) * frames_per_episode,
         "episodes": provenance,
         "image_transform": {
             "expert_npz": "already_matches_pi05_inference",

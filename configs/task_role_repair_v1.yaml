@@ -1,6 +1,6 @@
 schema: task-role-repair-v1
 status: locked_before_expert_or_policy_outcomes
-locked_at_utc: "2026-08-25T04:00:49Z"
+locked_at_utc: "2026-08-25T04:17:35Z"
 scientific_question: >-
   Does a diagnosed object-role failure identify simulator demonstrations that repair two
   previously unsolved tasks more efficiently than equal-dose random demonstrations from the
@@ -138,6 +138,7 @@ expert_acceptance:
   control_frequency_hz: 20
   dataset_fps: 10
   maximum_steps: 320
+  minimum_recorded_steps: 64
   required_validation_attempts_per_task: 5
   minimum_validation_success_fraction_per_task: 0.90
   maximum_final_distractor_translation_m: 0.025
@@ -162,6 +163,8 @@ replay:
 
 training:
   start_checkpoint_matched: true
+  frames_per_episode: 64
+  frame_sampling: deterministic_uniform_aligned
   optimizer_steps: 300
   batch_size: 2
   warmup_steps: 30
