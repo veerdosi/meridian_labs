@@ -73,6 +73,14 @@ def main() -> None:
         "schema": "task-role-repair-plans-v1",
         "config": str(args.config),
         "config_sha256": file_sha256(args.config),
+        "bddl_inputs": [
+            {
+                "path": str(variant["bddl"]),
+                "sha256": file_sha256(root / str(variant["bddl"])),
+            }
+            for task in config["tasks"]
+            for variant in task["role_variants"]
+        ],
         "outputs": outputs,
     }
     (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")

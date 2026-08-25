@@ -29,6 +29,11 @@ if [ "$WRITE_VIDEOS" = 1 ]; then VIDEO_FLAG=(--write-videos); fi
 printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\nrender_backend=osmesa\n' \
   "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" > "$RUN_ROOT/inputs.txt"
 sha256sum "$CONFIG" "$PLANS" > "$RUN_ROOT/input-sha256.txt"
+while IFS= read -r bddl; do
+  sha256sum "$ROOT/harness/$bddl"
+done < <("$ROOT/envs/libero/bin/python" -c \
+  'import json,sys; print("\n".join(sorted({json.loads(x)["bddl"] for x in open(sys.argv[1]) if x.strip()})))' \
+  "$PLANS") >> "$RUN_ROOT/input-sha256.txt"
 started=$(date +%s)
 "$ROOT/envs/libero/bin/python" "$ROOT/harness/scripts/libero_task_role_expert.py" \
   --config "$CONFIG" \
