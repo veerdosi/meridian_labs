@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ncpus=8:mem=64GB
+#PBS -l walltime=01:00:00
+#PBS -N role-convert
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${MANIFEST:?absolute path to a mixed expert/replay manifest}"
+: "${DATASET_REPO:?output LeRobot repository ID}"
+: "${NEW_EPISODES:?locked new episode count}"
+: "${REPLAY_EPISODES:?locked replay episode count}"
+: "${RUN_ID:?unique conversion run ID}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+RUN_ROOT="$ROOT/artifacts/task-role-data-conversion/$RUN_ID/$PBS_JOBID"
+export HF_LEROBOT_HOME="$ROOT/datasets/lerobot"
+export PYTHONPATH="$ROOT/harness/src:$ROOT/harness"
+export PYTHONUNBUFFERED=1
+mkdir -p "$RUN_ROOT" "$HF_LEROBOT_HOME"
+
+module load python/3.11.7-gcc11
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/convert_task_role_repair_dataset.py" \
+  --manifest "$MANIFEST" \
+  --repo-id "$DATASET_REPO" \
+  --output-root "$HF_LEROBOT_HOME" \
+  --expected-new "$NEW_EPISODES" \
+  --expected-replay "$REPLAY_EPISODES" \
+  > >(tee "$RUN_ROOT/conversion.json") 2>&1
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/verify_lerobot_dataset.py" \
+  --repo-id "$DATASET_REPO" \
+  --root "$HF_LEROBOT_HOME" \
+  --expected-episodes "$((NEW_EPISODES+REPLAY_EPISODES))" \
+  --output "$RUN_ROOT/verification.json" \
+  > >(tee "$RUN_ROOT/verification.log") 2>&1
+
+printf 'manifest=%s\ndataset_repo=%s\nnew=%s\nreplay=%s\n' \
+  "$MANIFEST" "$DATASET_REPO" "$NEW_EPISODES" "$REPLAY_EPISODES" > "$RUN_ROOT/inputs.txt"
+sha256sum "$MANIFEST" > "$RUN_ROOT/input-sha256.txt"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 \
+  | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"

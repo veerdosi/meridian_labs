@@ -8,6 +8,7 @@ import collections
 import json
 import math
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -95,12 +96,14 @@ def visible_pixels(env: Any, obs: dict[str, Any], object_names: list[str]) -> di
     key = "agentview_segmentation_instance"
     if key not in obs:
         raise ValueError(f"segmentation observation lacks {key}")
-    masks = env.get_segmentation_instances(np.asarray(obs[key]).copy())
+    segmentation = np.asarray(obs[key]).squeeze(-1)
     counts = {}
     for name in object_names:
-        if name not in masks:
-            raise ValueError(f"segmentation mapping lacks object {name}: {sorted(masks)}")
-        counts[name] = int(np.count_nonzero(masks[name]))
+        if name not in env.instance_to_id:
+            raise ValueError(
+                f"segmentation mapping lacks object {name}: {sorted(env.instance_to_id)}"
+            )
+        counts[name] = int(np.count_nonzero(segmentation == int(env.instance_to_id[name])))
     return counts
 
 
@@ -413,6 +416,7 @@ def main() -> None:
                     "role_variant": plan.get("role_variant"),
                     "accepted": False,
                     "error": f"{type(error).__name__}: {error}",
+                    "traceback": traceback.format_exc(limit=8),
                 }
             stream.write(json.dumps(result, sort_keys=True) + "\n")
             stream.flush()

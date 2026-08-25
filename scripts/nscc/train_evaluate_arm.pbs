@@ -31,6 +31,7 @@ export MERIDIAN_DATASET_REPO="$DATASET_REPO"
 export MERIDIAN_BATCH_SIZE=${MERIDIAN_BATCH_SIZE:-2}
 export MERIDIAN_TRAIN_STEPS="$TRAIN_STEPS"
 export MERIDIAN_WARMUP_STEPS=${MERIDIAN_WARMUP_STEPS:-10}
+export MERIDIAN_PEAK_LR=${MERIDIAN_PEAK_LR:-5e-5}
 export MERIDIAN_DECAY_STEPS="$TRAIN_STEPS"
 export MERIDIAN_SAVE_INTERVAL="$TRAIN_STEPS"
 export MERIDIAN_CHECKPOINT_ROOT="$ROOT/checkpoints"
@@ -117,7 +118,7 @@ printf '{"dataset_validation_seconds":%d,"training_seconds":%d,"server_start_sec
   "$((training_end-dataset_ready))" \
   "$((server_ready-training_end))" \
   "$((evaluation_end-server_ready))" > "$RUN_ROOT/phase_times.json"
-printf 'arm=%s\ndataset_repo=%s\nexpected_episodes=%s\nstarting_params=%s\ncheckpoint=%s\ntrain_steps=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
-  "$ARM" "$DATASET_REPO" "$EXPECTED_EPISODES" "$MERIDIAN_STARTING_PARAMS" "$CHECKPOINT" "$TRAIN_STEPS" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
+printf 'arm=%s\ndataset_repo=%s\nexpected_episodes=%s\nstarting_params=%s\ncheckpoint=%s\ntrain_steps=%s\npeak_lr=%s\neval_plans=%s\nreadiness_timeout=%s\n' \
+  "$ARM" "$DATASET_REPO" "$EXPECTED_EPISODES" "$MERIDIAN_STARTING_PARAMS" "$CHECKPOINT" "$TRAIN_STEPS" "$MERIDIAN_PEAK_LR" "$EVAL_PLANS" "$READINESS_TIMEOUT" \
   > "$RUN_ROOT/inputs.txt"
 find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"
