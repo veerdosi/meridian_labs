@@ -16,18 +16,21 @@ set -euo pipefail
 ROOT=/scratch/users/ntu/veer001/meridian_labs
 RUN_ROOT="$ROOT/artifacts/task-role-expert/$RUN_ID/$PBS_JOBID"
 WRITE_VIDEOS=${WRITE_VIDEOS:-1}
+RENDER_BACKEND=${RENDER_BACKEND:-egl}
 mkdir -p "$RUN_ROOT"
 
 module load python/3.8.13
 export LIBERO_CONFIG_PATH="$ROOT/config/libero"
 export PYTHONPATH="$ROOT/harness/src:$ROOT/harness:$ROOT/src/openpi/third_party/libero"
 export PYTHONUNBUFFERED=1
-export MUJOCO_GL=osmesa
+export MUJOCO_GL="$RENDER_BACKEND"
+unset CUDA_VISIBLE_DEVICES MUJOCO_EGL_DEVICE_ID
 
 VIDEO_FLAG=()
 if [ "$WRITE_VIDEOS" = 1 ]; then VIDEO_FLAG=(--write-videos); fi
-printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\nrender_backend=osmesa\n' \
-  "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" > "$RUN_ROOT/inputs.txt"
+printf 'config=%s\nplans=%s\nphase=%s\nwrite_videos=%s\nrender_backend=%s\n' \
+  "$CONFIG" "$PLANS" "$PHASE" "$WRITE_VIDEOS" "$RENDER_BACKEND" \
+  > "$RUN_ROOT/inputs.txt"
 sha256sum "$CONFIG" "$PLANS" > "$RUN_ROOT/input-sha256.txt"
 while IFS= read -r bddl; do
   sha256sum "$ROOT/harness/$bddl"
