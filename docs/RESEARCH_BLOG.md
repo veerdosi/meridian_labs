@@ -287,23 +287,23 @@ episode success.
 
 _The data preflight that caught the image-orientation mismatch before fine-tuning._
 
-The targeted selector scores the starting geometry of successful episodes, then chooses a balanced
+The targeted selector scored the starting geometry of successful episodes, then chose a balanced
 set across the two tasks that spreads coverage through that geometry. This is a direct consequence
 of the diagnosis: teach π0.5 the target and reference roles across varied initial arrangements while
 retaining successful approach, grasp, transport, and placement actions.
 
-## How the intervention will be judged
+## How I judged the intervention
 
 I rejected an easier random control drawn from unrelated tasks because it would confound task
 identity with data selection. The primary comparison had to ask whether Codex's diagnosis chose
 better examples, not merely whether the model had seen the failing tasks. Codex therefore built
 targeted and random sets from the same two task files, the same protected training partition, and
-the same dose. Targeted uses the diagnosed geometry; random uses a fixed seed without geometry
-scoring. Original-distribution rehearsal remains a secondary control and runs only if targeted
-first beats this stronger same-task random arm.
+the same dose. Targeted used the diagnosed geometry; random used a fixed seed without geometry
+scoring. Original-distribution rehearsal remained a secondary control and would run only if
+targeted first beat this stronger same-task random arm.
 
-The campaign starts from the released π0.5 checkpoint and evaluates four conditions when the gates
-justify them:
+The campaign started from the released π0.5 checkpoint. The locked sequence allowed four
+conditions when the earlier gates justified them:
 
 | Condition             | Training data                                 | Question                                                   |
 | --------------------- | --------------------------------------------- | ---------------------------------------------------------- |
@@ -312,32 +312,31 @@ justify them:
 | Same-task random      | seeded random examples from the same pool     | Would arbitrary examples work as well?                     |
 | Original distribution | familiar four-suite examples                  | Does ordinary rehearsal produce the same effect?           |
 
-The initial dose is four episodes in total, two per task. If that dose passes the locked comparison,
-the next dose contains eight episodes in total, four per task, with the smaller targeted set nested
-inside the larger one. Nesting matters because the dose curve should measure the value of adding
-examples rather than replacing one small sample with an unrelated larger sample.
+The initial dose was four episodes in total, two per task. If that dose passed the locked
+comparison, the next dose would contain eight episodes in total, four per task, with the smaller
+targeted set nested inside the larger one. Nesting mattered because the dose curve needed to measure
+the value of adding examples rather than replacing one small sample with an unrelated larger
+sample.
 
-The current fine-tunes use the same controlled recipe: the released π0.5 checkpoint, LoRA adapters,
+The fine-tunes used the same controlled recipe: the released π0.5 checkpoint, LoRA adapters,
 100 optimizer steps, batch size 2, AdamW with gradient clipping at 1.0, 10 warmup steps, and a peak
-learning rate of 5 × 10⁻⁵. Targeted and random receive the same number of parameter updates as well
-as the same number of episodes. Only episode selection differs.
+learning rate of 5 × 10⁻⁵. Targeted and random received the same number of parameter updates as well
+as the same number of episodes. Only episode selection differed.
 
-Every trained arm is evaluated on 40 target trials from untouched states and 20 regression trials.
-The analysis reports per-task and pooled success, paired trial outcomes, Wilson confidence
+Every completed arm was evaluated on 40 target trials from untouched states and 20 regression trials.
+The analysis reported per-task and pooled success, paired trial outcomes, Wilson confidence
 intervals, and regression against the released checkpoint. I set the decision criterion before
 training: targeted must strictly beat same-task random while staying within the predefined
-regression limit. Codex applies that gate without renegotiating it after seeing the scores. If the
-gate fails, the intervention stops at that dose.
+regression limit. Codex would apply that gate without renegotiating it after seeing the scores. If
+the gate failed, the intervention would stop at that dose.
 
-If dose eight runs, the blog will include a marginal-return graph across dose 0, 4, and 8. The
-horizontal axis will be the number of added demonstrations and the vertical axis target success,
-with uncertainty shown for each point. The useful quantity is the gain from 0 to 4 compared with the
-gain from 4 to 8. A small second gain indicates saturation and gives the harness a reason to stop
-collecting data.
+Had dose eight run, the marginal-return graph would have covered dose 0, 4, and 8. The useful
+quantity was the gain from 0 to 4 compared with the gain from 4 to 8. A small second gain would have
+indicated saturation and given the harness a reason to stop collecting data.
 
 ## If successful demonstrations did not already exist
 
-The current experiment relies on LIBERO's human demonstrations. A future environment may provide a
+This experiment relied on LIBERO's human demonstrations. A future environment may provide a
 simulator and a goal definition but no successful trajectories. I would then have Codex build a
 task-specific simulator expert before training.
 
@@ -359,8 +358,104 @@ after it completes the task and remains stable.
 
 ## Intervention results
 
+The released checkpoint solved none of the 40 untouched target trials. That was consistent with the
+discovery and confirmation runs: on both tasks, π0.5 continued to manipulate the wrong object.
+The four geometry-selected demonstrations produced three successful target rollouts. Random
+same-task data produced one.
+
+| Condition             | Target success | Wilson 95% interval | Regression success |
+| --------------------- | -------------: | ------------------: | -----------------: |
+| Released checkpoint   |           0/40 |        0.0% to 8.8% |              20/20 |
+| Targeted dose four    |           3/40 |       2.6% to 19.9% |              18/20 |
+| Same-task random      |           1/40 |       0.4% to 12.9% |              20/20 |
+| Original distribution |   Not released |                     |                    |
+
+The pooled table hides an important split. Neither trained arm solved the frying-pan task in any of
+its 20 trials. On the white-bowl task, targeted reached 3/20 and random reached 1/20. The targeted
+checkpoint therefore improved only one of the two behaviors that motivated the shared diagnosis.
+
+The paired comparison was also much weaker than the raw ordering suggested. Against random,
+targeted had three wins, one loss, and 36 ties. The two-sided exact sign test was 0.625. Against the
+released checkpoint, targeted had three wins and no losses, but with only three discordant trials
+the corresponding value was 0.25. Numerically, targeted was best. Statistically, the experiment did
+not establish a reliable advantage.
+
+Codex inspected the three successful trajectories rather than treating the success bit as enough.
+They were real completions: the white bowl moved 31.9 to 36.3 centimetres, the plate remained
+effectively stationary, and the actual BDDL predicate became true. But each success occurred only
+on repeat one. Repeat zero failed at the same initial state for states 44, 47, and 49. The adaptation
+had found a behavior that sometimes worked, not a repeatable repair.
+
+This was still a useful result. The intervention moved the policy in the intended direction, and
+the same-task random control showed that episode selection mattered numerically. It was nowhere near
+strong enough to support the intervention claim.
+
 ## Dose response and saturation
+
+The locked plan allowed a larger dose only after dose four beat the controls without unacceptable
+regression. That condition did not hold, so Codex did not train dose eight.
+
+This means there is no honest saturation curve for this campaign. There are only two observed
+points: zero added demonstrations and four. Drawing a smooth marginal-return curve through them
+would imply evidence that does not exist. The stopping decision is itself the quantity result:
+collecting more examples from this selector was not justified.
+
+The result also exposed a mismatch between diagnosis and data prescription. The behavior looked
+like object-role assignment, but the targeted selector optimized geometric coverage among existing
+successful demonstrations. Every demonstration in both arms already showed the correct object for
+the task. Geometry was therefore only an indirect proxy for the information the policy appeared to
+be missing. The experiment tested whether geometrically diverse same-task data helped, not whether
+contrastive role-binding data repaired the mechanism.
 
 ## Regression
 
+The released and random checkpoints solved all 20 regression trials. Targeted solved 18. Both
+failures occurred on the LIBERO Object task `pick up the tomato sauce and place it in the basket`,
+at initial states 40 and 48.
+
+The failure was not another object-selection error. In both traces, the robot contacted and moved
+the commanded tomato sauce. It moved the object by roughly 8 to 9 centimetres but never satisfied
+the basket predicate before the 400-step timeout. The evidence extractor classified both as
+sequencing or termination failures. Video review agreed: the policy knew which object to manipulate
+but failed to finish the placement.
+
+Regression fell from 20/20 to 18/20, an absolute loss of 10 percentage points. The locked limit was
+2 points. Because the evaluation had 20 trials, even one additional failure would have exceeded
+that limit; targeted produced two.
+
+Codex applied the rule written before training and stopped the campaign. It did not release the
+original-distribution arm and did not increase the dose. The intervention experiment was valid, but
+the intervention was unsuccessful: a small, unstable target gain came with larger damage to an
+existing capability.
+
 ## What I would change next
+
+The experiment left two different research questions, and they should not be blurred together.
+
+The first is a task-level repair. The two selected tasks contain a repeatable wrong-object behavior,
+and teaching a previously unsolved task is still a legitimate data-coverage intervention. Doing it
+properly would require data that directly varies the disputed roles. Codex would build a
+privileged-state MuJoCo expert, place target and distractor objects in controlled configurations,
+execute verified correct trajectories, and reject every trajectory that does not satisfy the BDDL
+goal. Targeted data would concentrate on configurations that elicit the wrong-object behavior;
+random data would come from the same generator and task but sample the valid state space uniformly.
+A fixed replay set would be shared by every arm to protect existing capabilities.
+
+That experiment would support a precise claim if it succeeded: Codex found a shared object-role
+failure, generated corrective simulator experience, and taught π0.5 the two tasks more efficiently
+than random data without damaging its other skills. It would not show a narrow failure boundary
+inside tasks that π0.5 already solved, because the released policy was 0/40 on the selected target
+plan.
+
+The second question is the original boundary-repair claim. Eight tasks in the screen were already
+6/6. A compact physical search over those competent tasks could vary object pose, receptacle pose,
+target-to-distractor distance, or robot approach configuration while preserving visibility and
+reachability. A qualifying task would need a competent canonical side, a repeatable moderate
+failure side, and enough headroom for targeted data to improve it. The same simulator expert could
+then generate targeted, uniformly random, and original-distribution trajectories from one source,
+removing the data-source confound.
+
+That campaign gave me what the stopping rule was meant to provide. The harness found a real
+behavior, survived a diagnosis bug, tested competing control explanations, ran a matched
+intervention, and rejected an unsafe result. It also separated the next decision cleanly: repair a
+task-level role gap, or search for a physical boundary in an otherwise competent task.
