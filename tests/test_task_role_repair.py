@@ -9,6 +9,7 @@ from meridian.task_role_repair import (
     build_random_plans,
     build_targeted_plans,
     paired_exact_p_value,
+    select_replay_episodes,
     validate_repair_config,
 )
 
@@ -79,6 +80,37 @@ def test_random_plans_are_balanced_unpaired_reproducible_and_nested() -> None:
         task = [item for item in first if item["task_id"] == task_id]
         assert [item["role_variant"] for item in task].count("original") == 2
         assert [item["role_variant"] for item in task].count("counterfactual") == 2
+
+
+def test_replay_is_suite_balanced_reproducible_and_nested() -> None:
+    registry = {
+        "sources": [
+            {
+                "suite": suite,
+                "task_id": index,
+                "prompt": f"task {index}",
+                "source": f"/data/{suite}.hdf5",
+                "source_sha256": str(index) * 64,
+                "available_episodes": 50,
+            }
+            for index, suite in enumerate(
+                ("libero_spatial", "libero_object", "libero_goal", "libero_10"), start=1
+            )
+        ]
+    }
+    small = select_replay_episodes(registry, dose=8, seed=440711)
+    medium = select_replay_episodes(registry, dose=24, seed=440711)
+    assert small == select_replay_episodes(registry, dose=8, seed=440711)
+    assert {item["id"] for item in small} <= {item["id"] for item in medium}
+    assert {item["suite"] for item in small} == {
+        "libero_spatial",
+        "libero_object",
+        "libero_goal",
+        "libero_10",
+    }
+    assert all(sum(item["suite"] == suite for item in small) == 2 for suite in {
+        item["suite"] for item in small
+    })
 
 
 def _records(targeted_success: set[int], random_success: set[int]) -> list[dict]:

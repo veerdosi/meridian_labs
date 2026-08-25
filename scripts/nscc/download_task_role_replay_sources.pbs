@@ -1,0 +1,34 @@
+#!/bin/bash
+#PBS -q normal
+#PBS -P personal-veer001
+#PBS -l select=1:ncpus=4:mem=32GB
+#PBS -l walltime=02:00:00
+#PBS -N role-replay
+#PBS -j oe
+#PBS -o /scratch/users/ntu/veer001/meridian_labs/jobs/logs/
+
+set -euo pipefail
+: "${SPEC:?absolute path to the locked replay source spec}"
+: "${RUN_ID:?unique replay-source run ID}"
+
+ROOT=/scratch/users/ntu/veer001/meridian_labs
+RUN_ROOT="$ROOT/artifacts/task-role-replay-sources/$RUN_ID/$PBS_JOBID"
+SOURCE_ROOT="$ROOT/datasets/libero-official"
+export HF_HOME="$ROOT/cache/huggingface"
+export HF_HUB_ENABLE_HF_TRANSFER=1
+export PYTHONUNBUFFERED=1
+mkdir -p "$RUN_ROOT" "$SOURCE_ROOT" "$HF_HOME"
+
+module load python/3.11.7-gcc11
+started=$(date +%s)
+"$ROOT/envs/openpi/bin/python" "$ROOT/harness/scripts/download_task_role_replay_sources.py" \
+  --spec "$SPEC" \
+  --output-root "$SOURCE_ROOT" \
+  --registry "$RUN_ROOT/source-registry.json" \
+  > >(tee "$RUN_ROOT/download.log") 2>&1
+finished=$(date +%s)
+printf '{"download_and_verify_seconds":%d}\n' "$((finished-started))" > "$RUN_ROOT/phase-times.json"
+printf 'spec=%s\nsource_root=%s\n' "$SPEC" "$SOURCE_ROOT" > "$RUN_ROOT/inputs.txt"
+sha256sum "$SPEC" > "$RUN_ROOT/input-sha256.txt"
+find "$RUN_ROOT" -type f ! -name SHA256SUMS -print0 \
+  | sort -z | xargs -0 sha256sum > "$RUN_ROOT/SHA256SUMS"

@@ -306,6 +306,44 @@ def build_expert_validation_plans(config: Mapping[str, Any]) -> list[dict[str, A
     return plans
 
 
+def select_replay_episodes(
+    source_registry: Mapping[str, Any], *, dose: int, seed: int
+) -> list[dict[str, Any]]:
+    """Select a nested, suite-balanced replay buffer from verified official sources."""
+    sources = list(source_registry.get("sources", []))
+    if not sources or dose <= 0 or dose % len(sources):
+        raise ValueError("replay dose must be positive and balanced across registered sources")
+    per_source = dose // len(sources)
+    rng = np.random.default_rng(seed)
+    selected_by_source = []
+    for source in sources:
+        available = int(source.get("available_episodes", 0))
+        if available < per_source:
+            raise ValueError(f"replay source has only {available}/{per_source} episodes")
+        indices = rng.permutation(available)[:per_source]
+        selected_by_source.append(
+            [
+                {
+                    "id": f"replay-{source['suite']}-t{source['task_id']}-demo{int(index)}",
+                    "kind": "official_hdf5",
+                    "suite": str(source["suite"]),
+                    "task_id": int(source["task_id"]),
+                    "prompt": str(source["prompt"]),
+                    "source": str(source["source"]),
+                    "source_sha256": str(source["source_sha256"]),
+                    "demo": f"demo_{int(index)}",
+                }
+                for index in indices
+            ]
+        )
+    # Round-robin ordering makes every smaller balanced dose a prefix of the larger selection.
+    return [
+        selected_by_source[source_index][episode_index]
+        for episode_index in range(per_source)
+        for source_index in range(len(sources))
+    ]
+
+
 def paired_exact_p_value(wins: int, losses: int) -> float:
     discordant = wins + losses
     if discordant == 0:
