@@ -1,6 +1,6 @@
 schema: task-role-repair-v1
-status: locked_after_expert_development_before_validation_or_policy_outcomes
-locked_at_utc: "2026-08-25T05:43:48Z"
+status: relocked_after_failed_generator_validation_before_training_or_policy_outcomes
+locked_at_utc: "2026-08-25T06:38:17Z"
 scientific_question: >-
   Does a diagnosed object-role failure identify simulator demonstrations that repair two
   previously unsolved tasks more efficiently than equal-dose random demonstrations from the
@@ -61,9 +61,9 @@ tasks:
         table_geom_z_m: 0.966
     generator_bounds:
       chefmate_8_frypan_1_x_m: [-0.18, 0.14]
-      chefmate_8_frypan_1_y_m: [-0.30, -0.08]
-      moka_pot_1_x_m: [-0.16, 0.16]
-      moka_pot_1_y_m: [-0.09, 0.10]
+      chefmate_8_frypan_1_y_m: [-0.30, -0.18]
+      moka_pot_1_x_m: [-0.16, 0.14]
+      moka_pot_1_y_m: [-0.02, 0.09]
       minimum_center_separation_m: 0.24
     contrastive_layouts:
       - {id: t18-l0, chefmate_8_frypan_1_xy_m: [-0.18, -0.30], moka_pot_1_xy_m: [0.12, 0.08]}
@@ -104,28 +104,28 @@ tasks:
       plate_1:
         grasp_offset_world_m: [0.0, 0.045, 0.012]
         grasp_axis_angle_rad: [3.142, 0.0, 0.0]
-        place_offset_world_m: [0.0, 0.030, 0.045]
+        place_offset_world_m: [0.0, 0.080, 0.045]
         close_steps: 35
         require_bilateral_contact_before_grasp_assist: true
         kinematic_grasp_assist: true
         table_geom_z_m: 0.902
         microwave_top_geom_z_m: 1.107
     generator_bounds:
-      source_x_m: [-0.18, 0.16]
-      source_y_m: [-0.30, -0.12]
+      source_x_m: [-0.03, 0.03]
+      source_y_m: [-0.30, -0.24]
       reference_x_m: [-0.035, 0.035]
-      reference_y_m: [-0.035, 0.035]
+      reference_y_m: [-0.035, 0.0]
       minimum_center_separation_m: 0.11
       source_surfaces:
-        table: {probability: 0.75, x_m: [-0.18, 0.16], y_m: [-0.24, -0.12]}
-        microwave_top: {probability: 0.25, x_m: [-0.03, 0.03], y_m: [-0.30, -0.24]}
+        table: {probability: 0.0, x_m: [-0.18, 0.16], y_m: [-0.24, -0.12]}
+        microwave_top: {probability: 1.0, x_m: [-0.03, 0.03], y_m: [-0.30, -0.24]}
     contrastive_layouts:
-      - {id: t37-l0, source_surface: microwave_top, source_xy_m: [-0.03, -0.30], reference_xy_m: [0.03, 0.03]}
-      - {id: t37-l1, source_surface: table, source_xy_m: [0.16, -0.14], reference_xy_m: [-0.03, 0.03]}
+      - {id: t37-l0, source_surface: microwave_top, source_xy_m: [-0.03, -0.30], reference_xy_m: [0.03, 0.0]}
+      - {id: t37-l1, source_surface: microwave_top, source_xy_m: [0.03, -0.30], reference_xy_m: [-0.03, 0.0]}
       - {id: t37-l2, source_surface: microwave_top, source_xy_m: [0.03, -0.24], reference_xy_m: [-0.03, -0.03]}
-      - {id: t37-l3, source_surface: table, source_xy_m: [-0.18, -0.14], reference_xy_m: [0.03, -0.03]}
-      - {id: t37-l4, source_surface: table, source_xy_m: [-0.14, -0.22], reference_xy_m: [-0.02, 0.02]}
-      - {id: t37-l5, source_surface: table, source_xy_m: [0.12, -0.22], reference_xy_m: [0.02, 0.02]}
+      - {id: t37-l3, source_surface: microwave_top, source_xy_m: [-0.03, -0.24], reference_xy_m: [0.03, -0.03]}
+      - {id: t37-l4, source_surface: microwave_top, source_xy_m: [0.00, -0.30], reference_xy_m: [-0.02, -0.015]}
+      - {id: t37-l5, source_surface: microwave_top, source_xy_m: [0.00, -0.24], reference_xy_m: [0.02, -0.015]}
 
 state_partitions:
   expert_tuning_init_states: [25]
@@ -134,7 +134,7 @@ state_partitions:
   untouched_target_init_states: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
   targeted_seed: 110351
   random_seed: 220703
-  generator_validation_seed: 330907
+  generator_validation_seed: 330910
   random_must_exclude_targeted_state_hashes: true
   untouched_states_must_never_be_generated_or_debugged: true
 
