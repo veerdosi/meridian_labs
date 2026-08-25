@@ -334,28 +334,6 @@ Had dose eight run, the marginal-return graph would have covered dose 0, 4, and 
 quantity was the gain from 0 to 4 compared with the gain from 4 to 8. A small second gain would have
 indicated saturation and given the harness a reason to stop collecting data.
 
-## If successful demonstrations did not already exist
-
-This experiment relied on LIBERO's human demonstrations. A future environment may provide a
-simulator and a goal definition but no successful trajectories. I would then have Codex build a
-task-specific simulator expert before training.
-
-For these manipulation tasks, the expert would use MuJoCo's privileged state:
-
-1. Parse the LIBERO goal predicate to identify the target object and destination.
-2. Read the exact target and receptacle poses from MuJoCo.
-3. Generate a collision-safe approach pose above the correct object.
-4. Use inverse kinematics or LIBERO's operational-space controller to approach, grasp, lift,
-   transport, and place.
-5. Verify success using the real BDDL goal predicate.
-6. Reject unsuccessful or unstable trajectories.
-7. Record observer images, wrist images, robot state, actions, contacts, and provenance in π0.5's
-   training format.
-8. Add controlled variation across training-only object poses and robot initial states.
-
-The predicate would serve as the acceptance test. A generated trajectory would enter training only
-after it completes the task and remains stable.
-
 ## Intervention results
 
 The released checkpoint solved none of the 40 untouched target trials. That was consistent with the
@@ -428,34 +406,110 @@ original-distribution arm and did not increase the dose. The intervention experi
 the intervention was unsuccessful: a small, unstable target gain came with larger damage to an
 existing capability.
 
-## What I would change next
+## The selector was the problem
 
-The experiment left two different research questions, and they should not be blurred together.
+The failed intervention clarified what the next dataset had to contain. The diagnosis was about
+roles, but the data selector was about geometry. Picking demonstrations with varied starting poses
+could show the policy more of the workspace. It could not show that the same two objects should take
+different roles when the instruction changes.
 
-The first is a task-level repair. The two selected tasks contain a repeatable wrong-object behavior,
-and teaching a previously unsolved task is still a legitimate data-coverage intervention. Doing it
-properly would require data that directly varies the disputed roles. Codex would build a
-privileged-state MuJoCo expert, place target and distractor objects in controlled configurations,
-execute verified correct trajectories, and reject every trajectory that does not satisfy the BDDL
-goal. Targeted data would concentrate on configurations that elicit the wrong-object behavior;
-random data would come from the same generator and task but sample the valid state space uniformly.
-A fixed replay set would be shared by every arm to protect existing capabilities.
+I decided to keep the two confirmed tasks and replace the intervention rather than start another
+failure search. Codex made the new hypothesis operational: if π0.5 had weak binding between the
+language instruction and the object it should manipulate, then the useful unit of data was a
+counterfactual pair. Hold the scene structure as steady as possible, change which object the
+instruction names, and demonstrate the corresponding change in behavior.
 
-That experiment would support a precise claim if it succeeded: Codex found a shared object-role
-failure, generated corrective simulator experience, and taught π0.5 the two tasks more efficiently
-than random data without damaging its other skills. It would not show a narrow failure boundary
-inside tasks that π0.5 already solved, because the released policy was 0/40 on the selected target
-plan.
+For the stove scene, one member of a pair asks for the frying pan and the other asks for the moka
+pot. For the relational scene, one asks for the white bowl to the right of the plate and the other
+asks for the plate to the right of the white bowl. The objects no longer have one fixed semantic
+role across the training set.
 
-The second question is the original boundary-repair claim. Eight tasks in the screen were already
-6/6. A compact physical search over those competent tasks could vary object pose, receptacle pose,
-target-to-distractor distance, or robot approach configuration while preserving visibility and
-reachability. A qualifying task would need a competent canonical side, a repeatable moderate
-failure side, and enough headroom for targeted data to improve it. The same simulator expert could
-then generate targeted, uniformly random, and original-distribution trajectories from one source,
-removing the data-source confound.
+That distinction sounds small, but it changes the experiment. The geometry pilot asked whether
+better coverage of the workspace helped. The contrastive intervention asks whether data that
+directly disambiguates object roles helps.
 
-That campaign gave me what the stopping rule was meant to provide. The harness found a real
-behavior, survived a diagnosis bug, tested competing control explanations, ran a matched
-intervention, and rejected an unsafe result. It also separated the next decision cleanly: repair a
-task-level role gap, or search for a physical boundary in an otherwise competent task.
+## Codex made the contrastive demonstrations in MuJoCo
+
+The official LIBERO demonstrations could not supply these pairs because they only covered the
+original task definitions. Codex therefore built a task-specific simulator expert. This was the
+point where the harness moved beyond selecting existing data and started producing the corrective
+experience implied by its diagnosis.
+
+For each demonstration, the generator parses the real BDDL goal, resolves the commanded object and
+destination, and reads their exact MuJoCo poses. It plans an approach above the object, closes the
+gripper, lifts, transports, and places with LIBERO's operational-space controller. Thin objects are
+awkward under the benchmark contact geometry, so grasp assistance is allowed only after both
+fingers have made contact. The trajectory is accepted only if the commanded object moves, the
+distractor stays within 2.5 centimetres, every recorded value is finite, and the actual BDDL
+predicate becomes true.
+
+Codex initially made the expert continue through a release, retreat, and settling sequence after
+the goal had already been reached. That extra ceremony could knock a correctly placed object back
+out of the success region. The right rule came directly from the benchmark: policy evaluation ends
+when the predicate first becomes true, so the expert should too. Removing the extra stages made the
+generator both simpler and correct.
+
+The final validation produced ten successful trajectories, five for each task, with both original
+and counterfactual roles represented. The generator then produced all eight selected targeted
+episodes and all eight selected random episodes successfully. Every rollout contains synchronized
+clean observer images, exact policy inputs, wrist images, robot state, actions, contacts, simulator
+state, stage labels, and goal-predicate values.
+
+Representative expert rollouts:
+
+- [Frying pan to stove](../artifacts/task-role-repair-dose8-local-v6/evidence/expert-original-pan/diagnostic.mp4)
+- [Moka pot to stove](../artifacts/task-role-repair-dose8-local-v6/evidence/expert-counterfactual-moka/diagnostic.mp4)
+- [White bowl to the right of the plate](../artifacts/task-role-repair-dose8-local-v6/evidence/expert-original-bowl/diagnostic.mp4)
+- [Plate to the right of the white bowl](../artifacts/task-role-repair-dose8-local-v6/evidence/expert-counterfactual-plate/diagnostic.mp4)
+
+These are privileged simulator demonstrations, not corrected π0.5 rollouts. Codex supplies the
+research logic and writes the expert; MuJoCo supplies exact state and contact; the benchmark goal
+predicate decides whether a trajectory is correct.
+
+## Making random a real control
+
+The random arm had to be strong enough that a targeted win would mean something. Drawing random
+episodes from unrelated LIBERO tasks would make the comparison trivial. Drawing from the ordinary
+released distribution would answer a different question about rehearsal. I removed
+original-distribution data from the decisive comparison and kept both trained arms inside the same
+two task families and the same physical support.
+
+Both arms contain eight new simulator demonstrations, four per task and two per semantic role. The
+targeted arm contains complete matched counterfactual pairs: the layout is shared while the
+instruction and commanded object change. The random arm uses independent seeded layouts from the
+same generator, with the same task and role balance, but it is forbidden from completing those
+matched pairs. It can still teach both tasks. What it lacks is the deliberately controlled contrast.
+
+To guard against forgetting, each arm also receives the exact same eight replay episodes drawn
+from four previously competent tasks in LIBERO Spatial, Object, Goal, and LIBERO-10. Each of the 16
+episodes contributes 64 aligned frames, giving both fine-tunes 1,024 training frames.
+
+| Condition | New data | Fixed replay | Question |
+| --- | --- | --- | --- |
+| Released π0.5 | none | none | How often does the unmodified policy solve the untouched boundary? |
+| Contrastive targeted | 8 matched role-swapped demonstrations | 8 identical replay episodes | Does mechanism-specific contrastive data repair the behavior? |
+| Same-task random | 8 independent demonstrations from the same support | the same 8 replay episodes | Would equal-dose, equally valid task data work just as well? |
+
+## Locking the final test
+
+Both adapters start from the same released `pi05_libero` parameters. Codex configured 300 optimizer
+steps, batch size 2, 30 warmup steps, a peak learning rate of 2 × 10⁻⁵, gradient clipping at 1.0,
+and the same cosine schedule. π0.5 keeps its ten-action prediction horizon. The dataset, not the
+optimizer or compute budget, is the experimental variable.
+
+The evaluation uses 40 target trials from initial states 40 through 49, with two repeats per state
+and 20 trials per task. Those states were never used for discovery, confirmation, expert
+validation, or training. Another 20 trials cover four previously competent tasks and test whether
+the intervention damages capabilities that replay was meant to preserve. The released checkpoint,
+targeted adapter, and random adapter all run the same ordered plan.
+
+I locked a demanding decision rule before those policy outcomes existed. Targeted must reach at
+least 12 of 40 target successes, reach at least four successes on each task, beat random separately
+on both tasks, lead by at least six trials in the pooled comparison, pass the paired exact test at
+0.05, and lose no regression trials relative to the released checkpoint. A better pooled number by
+itself is not enough.
+
+If dose eight passes, Codex can generate the nested dose-24 comparison and measure marginal return
+from dose zero to eight and from eight to 24. A gain of two trials or fewer at the larger dose counts
+as saturation. If dose eight fails, the harness stops instead of spending more training compute on
+the same explanation.

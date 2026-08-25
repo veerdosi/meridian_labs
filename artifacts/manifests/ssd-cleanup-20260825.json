@@ -1,0 +1,94 @@
+{
+  "schema": "ssd-cleanup-v1",
+  "created_at": "2026-08-25",
+  "storage": "local-ssd",
+  "planned_reclaim_allocated_bytes": 2482798592,
+  "actual_reclaim_filesystem_bytes": 2483134464,
+  "free_space_before_bytes": 184008711168,
+  "free_space_after_bytes": 186491845632,
+  "selection_basis": "Remove superseded or regenerable bulk artifacts after extracting and verifying all active campaign inputs and representative blog evidence.",
+  "retained": [
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/expert-validation",
+      "reason": "Final 10/10 repeatability evidence and locked plans"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/targeted",
+      "reason": "Final targeted dose-eight trajectories"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/random-final",
+      "reason": "Self-contained final random dose-eight trajectories"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/evidence",
+      "reason": "Four synchronized, blog-ready expert demonstrations covering both tasks and both roles"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4",
+      "reason": "Negative pilot summaries, raw result JSONL, montage, strips, and compact videos; only duplicate NPZ tensors are removed"
+    }
+  ],
+  "deleted": [
+    {
+      "path": "artifacts/task-role-repair-local-debug",
+      "allocated_kib_before": 1719324,
+      "reason": "Superseded expert-controller iterations after final validation and representative media were extracted",
+      "recoverability": "Re-runnable from the retained code and locked configuration"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local",
+      "allocated_kib_before": 190872,
+      "reason": "Superseded pre-v6 dose generation",
+      "recoverability": "Re-runnable; final v6 datasets are retained locally and on NSCC"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/random",
+      "allocated_kib_before": 13064,
+      "reason": "Unselected random candidates after the final selected episodes were moved",
+      "recoverability": "Deterministically re-runnable from the locked random plan"
+    },
+    {
+      "path": "artifacts/task-role-repair-dose8-local-v6/random-reserve-t18",
+      "allocated_kib_before": 74088,
+      "reason": "Unselected reserve candidates after selected replacements were moved",
+      "recoverability": "Deterministically re-runnable from the locked random plan"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4/review/regression-libero_object-t5-i48.npz",
+      "allocated_kib_before": 152100,
+      "reason": "Duplicate review tensor archive; compact video, strip, result JSONL, and summary retained",
+      "recoverability": "Recoverable from the NSCC campaign or by rerunning the locked evaluation"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4/review/regression-libero_object-t5-i40.npz",
+      "allocated_kib_before": 152052,
+      "reason": "Duplicate review tensor archive; compact video, strip, result JSONL, and summary retained",
+      "recoverability": "Recoverable from the NSCC campaign or by rerunning the locked evaluation"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4/review/target-t37-i44-r1.npz",
+      "allocated_kib_before": 60892,
+      "reason": "Duplicate review tensor archive; compact video, strip, result JSONL, and summary retained",
+      "recoverability": "Recoverable from the NSCC campaign or by rerunning the locked evaluation"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4/review/target-t37-i47-r1.npz",
+      "allocated_kib_before": 36048,
+      "reason": "Duplicate review tensor archive; compact video, strip, result JSONL, and summary retained",
+      "recoverability": "Recoverable from the NSCC campaign or by rerunning the locked evaluation"
+    },
+    {
+      "path": "artifacts/task-role-v1/dose4/review/target-t37-i49-r1.npz",
+      "allocated_kib_before": 26168,
+      "reason": "Duplicate review tensor archive; compact video, strip, result JSONL, and summary retained",
+      "recoverability": "Recoverable from the NSCC campaign or by rerunning the locked evaluation"
+    }
+  ],
+  "reference_check": {
+    "active_configs": "clear",
+    "versioned_manifests": "clear",
+    "result_summaries": "clear",
+    "pbs_inputs": "clear"
+  }
+}
